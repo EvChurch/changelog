@@ -1,0 +1,87 @@
+@import "tailwindcss";
+
+:root {
+  --background: #fafafa;
+  --foreground: #18181b;
+  --card: #ffffff;
+  --card-border: #e4e4e7;
+  --muted: #71717a;
+  --primary: #18181b;
+  --primary-hover: #27272a;
+  --ring: #3f3f46;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #09090b;
+    --foreground: #fafafa;
+    --card: #18181b;
+    --card-border: #27272a;
+    --muted: #a1a1aa;
+    --primary: #fafafa;
+    --primary-hover: #e4e4e7;
+    --ring: #71717a;
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-feature-settings: "rlig" 1, "calt" 1;
+}
+
+/* Shared component styles – use these in className */
+.changelog-header {
+  @apply sticky top-0 z-10 border-b border-zinc-200/80 bg-white/95 backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/95;
+}
+
+.changelog-container {
+  @apply mx-auto max-w-3xl px-4 sm:px-6;
+}
+
+.changelog-card {
+  @apply rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900;
+}
+
+.changelog-card-hover {
+  @apply rounded-xl border border-zinc-200 bg-white shadow-sm transition-colors hover:border-zinc-300 hover:bg-zinc-50/50 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700 dark:hover:bg-zinc-800/50;
+}
+
+.changelog-btn-primary {
+  @apply inline-flex items-center justify-center rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-zinc-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-600 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 dark:focus-visible:outline-zinc-400;
+}
+
+.changelog-btn-secondary {
+  @apply inline-flex items-center justify-center rounded-lg border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-400 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800;
+}
+
+.changelog-btn-success {
+  @apply inline-flex items-center justify-center rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500;
+}
+
+.changelog-input {
+  @apply block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 shadow-sm placeholder:text-zinc-400 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-zinc-500 dark:focus:ring-zinc-500;
+}
+
+.changelog-label {
+  @apply block text-sm font-medium text-zinc-700 dark:text-zinc-300;
+}
+
+.changelog-page-title {
+  @apply text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100;
+}
+
+.changelog-page-subtitle {
+  @apply mt-1 text-sm text-zinc-500 dark:text-zinc-400;
+}
+
+.changelog-section-title {
+  @apply text-sm font-medium text-zinc-700 dark:text-zinc-300;
+}
