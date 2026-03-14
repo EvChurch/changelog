@@ -21,79 +21,87 @@ enum FeedbackSource {
   member
 }
 
-model User {
-  id           String        @id @default(cuid())
-  pcoId        String        @unique
-  email        String?
-  name         String?
-  image        String?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  drivers      Driver[]
-  leaders      Leader[]
-  teamMembers  TeamMember[]
-  feedback     Feedback[]    @relation("CreatedBy")
+model Person {
+  id          String       @id
+  email       String?
+  fullName    String
+  firstName   String
+  lastName    String
+  image       String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  driver      Driver?
+  leaders     Leader[]
+  assignments Assignment[]
+  feedback    Feedback[]   @relation("CreatedBy")
 }
 
 model ServiceType {
-  id             String   @id @default(cuid())
-  pcoServiceTypeId String @unique
-  name           String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  teams          Team[]
+  id        String   @id
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  teams     Team[]
 }
 
 model Team {
-  id             String       @id @default(cuid())
-  pcoTeamId      String       @unique
-  serviceTypeId  String?
-  name           String
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  serviceType    ServiceType? @relation(fields: [serviceTypeId], references: [id], onDelete: SetNull)
-  leaders        Leader[]
-  members        TeamMember[]
-  feedback       Feedback[]
+  id            String       @id
+  serviceTypeId String?
+  name          String
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  serviceType   ServiceType? @relation(fields: [serviceTypeId], references: [id], onDelete: SetNull)
+  leaders       Leader[]
+  positions     Position[]
+  feedback      Feedback[]
 }
 
-model TeamMember {
-  id     String @id @default(cuid())
-  userId String
-  teamId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  @@unique([userId, teamId])
+model Position {
+  id          String       @id
+  teamId      String
+  name        String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  team        Team         @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  assignments Assignment[]
+}
+
+model Assignment {
+  personId     String
+  positionId   String
+  person       Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
+  teamPosition Position @relation(fields: [positionId], references: [id], onDelete: Cascade)
+
+  @@unique([personId, positionId])
 }
 
 model Driver {
-  id     String @id @default(cuid())
-  userId String @unique
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id
+  person Person @relation(fields: [id], references: [id], onDelete: Cascade)
 }
 
 model Leader {
-  id     String @id @default(cuid())
-  userId String
-  teamId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  @@unique([userId, teamId])
+  personId String
+  teamId   String
+  person   Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+  team     Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@id([personId, teamId])
 }
 
 model Feedback {
-  id                  String         @id @default(cuid())
-  teamId              String
-  createdById         String
-  content             String
-  status              FeedbackStatus
-  source              FeedbackSource
-  leaderComment       String?
+  id                 String         @id @default(cuid())
+  teamId             String
+  personId           String
+  content            String
+  status             FeedbackStatus
+  source             FeedbackSource
+  leaderComment      String?
   acceptedAt         DateTime?
   driverComment      String?
-  reviewedByDriverAt  DateTime?
-  createdAt           DateTime       @default(now())
-  updatedAt           DateTime       @updatedAt
-  team                Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  createdBy           User           @relation("CreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
+  reviewedByDriverAt DateTime?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  team               Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  createdBy          Person         @relation("CreatedBy", fields: [personId], references: [id], onDelete: Cascade)
 }

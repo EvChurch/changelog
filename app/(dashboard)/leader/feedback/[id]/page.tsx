@@ -4,7 +4,7 @@ import { getServerSession } from "next-auth"
 
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/db"
-import { getOrCreateUserByPcoId } from "@/lib/user"
+import { getOrCreatePersonByPcoId } from "@/lib/person"
 
 import LeaderActions from "./leader-actions"
 
@@ -16,12 +16,12 @@ export default async function LeaderFeedbackPage({
   const session = await getServerSession(authOptions)
   if (!session) redirect("/login")
   const { id } = await params
-  const user = await getOrCreateUserByPcoId(session.user.id, {
+  const person = await getOrCreatePersonByPcoId(session.user.id, {
     email: session.user.email,
-    name: session.user.name,
+    fullName: session.user.name,
   })
   const isLeader = await prisma.leader.findFirst({
-    where: { userId: user.id },
+    where: { personId: person.id },
   })
   if (!isLeader) redirect("/leader")
 
@@ -29,12 +29,14 @@ export default async function LeaderFeedbackPage({
     where: { id },
     include: {
       team: true,
-      createdBy: { select: { name: true, email: true } },
+      createdBy: { select: { fullName: true, email: true } },
     },
   })
   if (!feedback || feedback.status !== "pending_leader_review") notFound()
   const canAct = await prisma.leader.findUnique({
-    where: { userId_teamId: { userId: user.id, teamId: feedback.teamId } },
+    where: {
+      personId_teamId: { personId: person.id, teamId: feedback.teamId },
+    },
   })
   if (!canAct) redirect("/leader")
 
@@ -66,7 +68,8 @@ export default async function LeaderFeedbackPage({
             {feedback.content}
           </p>
           <p className="mt-3 text-sm text-zinc-500">
-            From: {feedback.createdBy.name ?? feedback.createdBy.email ?? "—"}
+            From:{" "}
+            {feedback.createdBy.fullName ?? feedback.createdBy.email ?? "—"}
           </p>
           {feedback.driverComment && (
             <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">

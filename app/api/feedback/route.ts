@@ -3,16 +3,16 @@ import { getServerSession } from "next-auth"
 
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/db"
-import { getOrCreateUserByPcoId } from "@/lib/user"
+import { getOrCreatePersonByPcoId } from "@/lib/person"
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
-  const user = await getOrCreateUserByPcoId(session.user.id, {
+  const person = await getOrCreatePersonByPcoId(session.user.id, {
     email: session.user.email ?? undefined,
-    name: session.user.name ?? undefined,
+    fullName: session.user.name ?? undefined,
   })
 
   const { searchParams } = new URL(req.url)
@@ -24,7 +24,7 @@ export async function GET(req: Request) {
 
   if (role === "driver") {
     const isDriver = await prisma.driver.findUnique({
-      where: { userId: user.id },
+      where: { id: person.id },
     })
     if (!isDriver) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
@@ -33,7 +33,7 @@ export async function GET(req: Request) {
       where: { status: "pending_driver_review" },
       include: {
         team: { select: { name: true } },
-        createdBy: { select: { name: true, email: true } },
+        createdBy: { select: { fullName: true, email: true } },
       },
       orderBy: { createdAt: "desc" },
       take: limit,
@@ -43,10 +43,10 @@ export async function GET(req: Request) {
 
   if (role === "leader") {
     const leaderTeams = await prisma.leader.findMany({
-      where: { userId: user.id },
+      where: { personId: person.id },
       select: { teamId: true },
     })
-    const teamIds = leaderTeams.map((l: { teamId: string }) => l.teamId)
+    const teamIds = leaderTeams.map((l) => l.teamId)
     if (teamIds.length === 0) {
       return NextResponse.json([])
     }
@@ -57,7 +57,7 @@ export async function GET(req: Request) {
       },
       include: {
         team: { select: { name: true } },
-        createdBy: { select: { name: true, email: true } },
+        createdBy: { select: { fullName: true, email: true } },
       },
       orderBy: { createdAt: "desc" },
       take: limit,
@@ -85,7 +85,7 @@ export async function GET(req: Request) {
       where,
       include: {
         team: { select: { name: true } },
-        createdBy: { select: { name: true, email: true } },
+        createdBy: { select: { fullName: true, email: true } },
       },
       orderBy: { acceptedAt: "desc" },
       take: limit,
@@ -118,15 +118,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "teamId required" }, { status: 400 })
   }
 
-  const user = await getOrCreateUserByPcoId(session.user.id, {
+  const person = await getOrCreatePersonByPcoId(session.user.id, {
     email: session.user.email ?? undefined,
-    name: session.user.name ?? undefined,
+    fullName: session.user.name ?? undefined,
   })
 
-  const team = await prisma.team.findFirst({
-    where: {
-      OR: [{ id: pcoTeamIdOrOurId }, { pcoTeamId: pcoTeamIdOrOurId }],
-    },
+  const team = await prisma.team.findUnique({
+    where: { id: pcoTeamIdOrOurId },
   })
   if (!team) {
     return NextResponse.json(
@@ -137,7 +135,7 @@ export async function POST(req: Request) {
 
   const isDriver = await prisma.driver
     .findUnique({
-      where: { userId: user.id },
+      where: { id: person.id },
     })
     .then(Boolean)
 
@@ -151,7 +149,7 @@ export async function POST(req: Request) {
   const feedback = await prisma.feedback.create({
     data: {
       teamId: team.id,
-      createdById: user.id,
+      personId: person.id,
       content: content.trim(),
       status,
       source,

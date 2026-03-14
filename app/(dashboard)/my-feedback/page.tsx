@@ -4,7 +4,7 @@ import { getServerSession } from "next-auth"
 
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/db"
-import { getOrCreateUserByPcoId } from "@/lib/user"
+import { getOrCreatePersonByPcoId } from "@/lib/person"
 
 import MyFeedbackClient from "./my-feedback-client"
 
@@ -13,9 +13,9 @@ const DEFAULT_DAYS = 90
 export default async function MyFeedbackPage() {
   const session = await getServerSession(authOptions)
   if (!session) redirect("/login")
-  const user = await getOrCreateUserByPcoId(session.user.id, {
+  await getOrCreatePersonByPcoId(session.user.id, {
     email: session.user.email,
-    name: session.user.name,
+    fullName: session.user.name,
   })
 
   const teams = await prisma.team.findMany({
@@ -29,7 +29,7 @@ export default async function MyFeedbackPage() {
     where: { status: "accepted", acceptedAt: { gte: since } },
     include: {
       team: { select: { id: true, name: true } },
-      createdBy: { select: { name: true, email: true } },
+      createdBy: { select: { fullName: true, email: true } },
     },
     orderBy: { acceptedAt: "desc" },
   })

@@ -3,14 +3,7 @@ import { getServerSession } from "next-auth"
 
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/db"
-import { env } from "@/lib/env"
-import { syncLeadersFromPCO } from "@/lib/jobs/sync-pco/sync-leaders"
-import { syncMembersFromPCO } from "@/lib/jobs/sync-pco/sync-members"
-import { fetchServiceType, fetchTeams } from "@/lib/pco"
-import {
-  getOrCreateServiceTypeByPcoId,
-  getOrCreateTeamByPcoId,
-} from "@/lib/user"
+import { fetchTeamsSnapshot } from "@/lib/pco"
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
@@ -18,21 +11,31 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
   const { searchParams } = new URL(req.url)
-  const serviceTypePcoId =
-    searchParams.get("serviceTypeId") ?? env.PCO_SERVICE_TYPE_ID
+  const serviceTypePcoId = searchParams.get("serviceTypeId")
   try {
     if (serviceTypePcoId) {
-      const st = await fetchServiceType(serviceTypePcoId)
-      const serviceType = await getOrCreateServiceTypeByPcoId(st.id, st.name)
-      const pcoTeams = await fetchTeams(serviceTypePcoId)
-      const teams = await Promise.all(
-        pcoTeams.map((t) =>
-          getOrCreateTeamByPcoId(t.id, t.name, serviceType.id)
-        )
+      const snapshot = await fetchTeamsSnapshot()
+      const filteredServiceTypes = snapshot.serviceTypes.filter(
+        (st) => st.where.id === serviceTypePcoId
       )
-      await syncLeadersFromPCO(serviceTypePcoId, teams)
-      await syncMembersFromPCO(serviceTypePcoId, teams)
-      return NextResponse.json(teams.map((t) => ({ id: t.id, name: t.name })))
+      const filteredTeams = snapshot.teams.filter(
+        (team) =>
+          team.create.serviceType?.connect?.id === serviceTypePcoId ||
+          team.update.serviceType?.connect?.id === serviceTypePcoId
+      )
+
+      for (const person of snapshot.people) {
+        await prisma.person.upsert(person)
+      }
+      for (const st of filteredServiceTypes) {
+        await prisma.serviceType.upsert(st)
+      }
+      const teams = await Promise.all(
+        filteredTeams.map((t) => prisma.team.upsert(t))
+      )
+      return NextResponse.json(
+        teams.map((team) => ({ id: team.id, name: team.name }))
+      )
     }
     const teams = await prisma.team.findMany({
       select: { id: true, name: true },

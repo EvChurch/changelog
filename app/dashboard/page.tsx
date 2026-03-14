@@ -36,7 +36,7 @@ export default async function DashboardPage() {
             Driver
           </Link>
           <Link href="/leader" className="changelog-btn-secondary">
-            Leader
+            Team Leader
           </Link>
           <Link href="/my-feedback" className="changelog-btn-secondary">
             My team feedback

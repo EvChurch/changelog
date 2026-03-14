@@ -4,24 +4,24 @@ import { getServerSession } from "next-auth"
 
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/db"
-import { getOrCreateUserByPcoId } from "@/lib/user"
+import { getOrCreatePersonByPcoId } from "@/lib/person"
 
 export default async function DriverPage() {
   const session = await getServerSession(authOptions)
   if (!session) redirect("/login")
-  const user = await getOrCreateUserByPcoId(session.user.id, {
+  const person = await getOrCreatePersonByPcoId(session.user.id, {
     email: session.user.email,
-    name: session.user.name,
+    fullName: session.user.name,
   })
   const isDriver = await prisma.driver.findUnique({
-    where: { userId: user.id },
+    where: { id: person.id },
   })
 
   const pendingReview = await prisma.feedback.findMany({
     where: { status: "pending_driver_review" },
     include: {
       team: { select: { name: true } },
-      createdBy: { select: { name: true, email: true } },
+      createdBy: { select: { fullName: true, email: true } },
     },
     orderBy: { createdAt: "desc" },
   })

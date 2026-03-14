@@ -1,8 +1,66 @@
+import Jsona from "jsona"
 import { z } from "zod"
 
+import { Prisma } from "@/generated/prisma/client"
 import { env } from "@/lib/env"
 
 const PCO_API = "https://api.planningcenteronline.com"
+const jsonaFormatter = new Jsona()
+const PCO_TEAMS_PAGE_SIZE = 25
+
+const serviceTypeSchema = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+  })
+  .loose()
+
+const personSchema = z
+  .object({
+    id: z.string(),
+    full_name: z.string(),
+    first_name: z.string(),
+    last_name: z.string(),
+  })
+  .loose()
+
+const teamPositionSchema = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    team: z.object({ id: z.string() }).loose(),
+  })
+  .loose()
+
+const assignmentSchema = z
+  .object({
+    id: z.string(),
+    person: z.object({ id: z.string() }).loose(),
+    team_position: z.object({ id: z.string() }).loose(),
+  })
+  .loose()
+
+const teamLeaderSchema = z
+  .object({
+    id: z.string(),
+    team: z.object({ id: z.string() }).loose(),
+    person: z.object({ id: z.string() }).loose(),
+  })
+  .loose()
+
+const teamSchema = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    service_type: serviceTypeSchema.nullable(),
+    people: z.array(personSchema),
+    team_positions: z.array(teamPositionSchema),
+    person_team_position_assignments: z.array(assignmentSchema),
+    team_leaders: z.array(teamLeaderSchema),
+  })
+  .loose()
+
+const teamsPayloadSchema = z.array(teamSchema)
 
 function pcoBasicAuth(): string {
   return Buffer.from(
@@ -19,184 +77,171 @@ async function fetchPCO(path: string): Promise<unknown> {
     const text = await res.text()
     throw new Error(`PCO API ${res.status}: ${text}`)
   }
-  return res.json()
+  const text = await res.text()
+  return jsonaFormatter.deserialize(text)
 }
 
-const pcoMetaNext = z.object({ offset: z.string() })
-const pcoMeta = z.object({ next: pcoMetaNext.optional() }).optional()
+export type TeamsSnapshot = {
+  serviceTypes: Prisma.ServiceTypeUpsertArgs[]
+  teams: Prisma.TeamUpsertArgs[]
+  people: Prisma.PersonUpsertArgs[]
+  leaders: Prisma.LeaderUpsertArgs[]
+  positions: Prisma.PositionUpsertArgs[]
+  assignments: Prisma.AssignmentUpsertArgs[]
+}
 
-const pcoResourceAttributesName = z.object({ name: z.string() })
-const pcoServiceTypeItem = z.object({
-  id: z.string(),
-  type: z.string(),
-  attributes: pcoResourceAttributesName.optional(),
-})
-const pcoServiceTypeResponse = z.object({
-  data: pcoServiceTypeItem,
-  meta: pcoMeta,
-})
-const pcoServiceTypesResponse = z.object({
-  data: z.array(pcoServiceTypeItem),
-  meta: pcoMeta,
-})
+export async function fetchTeamsSnapshot(): Promise<TeamsSnapshot> {
+  const include =
+    "people,person_team_position_assignments,service_types,team_leaders,team_positions"
+  const serviceTypes = new Map<string, Prisma.ServiceTypeUpsertArgs>()
+  const teams = new Map<string, Prisma.TeamUpsertArgs>()
+  const people = new Map<string, Prisma.PersonUpsertArgs>()
+  const leaders = new Map<string, Prisma.LeaderUpsertArgs>()
+  const positions = new Map<string, Prisma.PositionUpsertArgs>()
+  const assignments = new Map<string, Prisma.AssignmentUpsertArgs>()
+  let offset = 0
 
-const pcoTeamItem = z.object({
-  id: z.string(),
-  type: z.string(),
-  attributes: pcoResourceAttributesName.optional(),
-})
-const pcoTeamsResponse = z.object({
-  data: z.array(pcoTeamItem),
-  meta: pcoMeta,
-})
+  while (true) {
+    console.log(`Fetching teams from PCO... (offset: ${offset})`)
 
-const pcoTeamLeaderPersonData = z.object({ id: z.string() })
-const pcoTeamLeaderItem = z.object({
-  id: z.string(),
-  type: z.string(),
-  relationships: z
-    .object({
-      person: z.object({ data: pcoTeamLeaderPersonData }).optional(),
-    })
-    .optional(),
-})
-const pcoTeamLeadersResponse = z.object({
-  data: z.array(pcoTeamLeaderItem),
-})
+    const params = new URLSearchParams({ include })
+    if (offset > 0) params.set("offset", String(offset))
+    const rawResponse = await fetchPCO(
+      `/services/v2/teams?${params.toString()}`
+    )
+    const response = teamsPayloadSchema.safeParse(rawResponse)
+    if (!response.success) {
+      console.error(response.error.message)
+      throw new Error(
+        `Invalid teams payload from PCO: ${response.error.message}`
+      )
+    }
 
-const pcoPositionItem = z.object({
-  id: z.string(),
-  type: z.string(),
-})
-const pcoPositionsResponse = z.object({
-  data: z.array(pcoPositionItem),
-})
+    const teamModels = response.data
 
-const pcoAssignmentPersonData = z.object({ id: z.string() })
-const pcoAssignmentItem = z.object({
-  id: z.string(),
-  type: z.string(),
-  relationships: z
-    .object({
-      person: z.object({ data: pcoAssignmentPersonData }).optional(),
-    })
-    .optional(),
-})
-const pcoAssignmentsResponse = z.object({
-  data: z.array(pcoAssignmentItem),
-})
+    if (teamModels.length === 0) break
 
-const pcoPersonAttributes = z.object({
-  first_name: z.string().optional(),
-  last_name: z.string().optional(),
-  email: z.string().optional(),
-})
-const pcoPersonItem = z.object({
-  id: z.string(),
-  type: z.string(),
-  attributes: pcoPersonAttributes.optional(),
-})
-const pcoPersonResponse = z.object({
-  data: pcoPersonItem,
-})
+    for (const team of teamModels) {
+      if (team.service_type) {
+        serviceTypes.set(team.service_type.id, {
+          where: { id: team.service_type.id },
+          create: { id: team.service_type.id, name: team.service_type.name },
+          update: { name: team.service_type.name },
+        })
+      }
 
-export async function fetchServiceType(
-  serviceTypeId: string
-): Promise<{ id: string; name: string }> {
-  const json = await fetchPCO(`/services/v2/service_types/${serviceTypeId}`)
-  const parsed = pcoServiceTypeResponse.parse(json)
-  const d = parsed.data
+      teams.set(team.id, {
+        where: { id: team.id },
+        create: {
+          id: team.id,
+          name: team.name,
+          serviceType: team.service_type
+            ? { connect: { id: team.service_type.id } }
+            : undefined,
+        },
+        update: {
+          name: team.name,
+          serviceType: team.service_type
+            ? { connect: { id: team.service_type.id } }
+            : undefined,
+        },
+      })
+
+      for (const person of team.people) {
+        people.set(person.id, {
+          where: { id: person.id },
+          create: {
+            id: person.id,
+            fullName: person.full_name,
+            firstName: person.first_name,
+            lastName: person.last_name,
+          },
+          update: {
+            fullName: person.full_name,
+            firstName: person.first_name,
+            lastName: person.last_name,
+          },
+        })
+      }
+
+      for (const team_position of team.team_positions) {
+        positions.set(team_position.id, {
+          where: { id: team_position.id },
+          create: {
+            id: team_position.id,
+            team: { connect: { id: team_position.team.id } },
+            name: team_position.name,
+          },
+          update: {
+            team: { connect: { id: team_position.team.id } },
+            name: team_position.name,
+          },
+        })
+      }
+
+      for (const team_leader of team.team_leaders) {
+        leaders.set(`${team_leader.person.id}:${team_leader.team.id}`, {
+          where: {
+            personId_teamId: {
+              personId: team_leader.person.id,
+              teamId: team_leader.team.id,
+            },
+          },
+          create: {
+            person: { connect: { id: team_leader.person.id } },
+            team: { connect: { id: team_leader.team.id } },
+          },
+          update: {
+            team: { connect: { id: team_leader.team.id } },
+            person: { connect: { id: team_leader.person.id } },
+          },
+        })
+      }
+
+      for (const person_team_position_assignment of team.person_team_position_assignments) {
+        assignments.set(
+          `${person_team_position_assignment.person.id}:${person_team_position_assignment.team_position.id}`,
+          {
+            where: {
+              personId_positionId: {
+                personId: person_team_position_assignment.person.id,
+                positionId: person_team_position_assignment.team_position.id,
+              },
+            },
+            create: {
+              person: {
+                connect: { id: person_team_position_assignment.person.id },
+              },
+              teamPosition: {
+                connect: {
+                  id: person_team_position_assignment.team_position.id,
+                },
+              },
+            },
+            update: {
+              person: {
+                connect: { id: person_team_position_assignment.person.id },
+              },
+              teamPosition: {
+                connect: {
+                  id: person_team_position_assignment.team_position.id,
+                },
+              },
+            },
+          }
+        )
+      }
+    }
+    if (teamModels.length < PCO_TEAMS_PAGE_SIZE) break
+    offset += PCO_TEAMS_PAGE_SIZE
+  }
+
   return {
-    id: d.id,
-    name: d.attributes?.name ?? d.id,
-  }
-}
-
-export async function fetchServiceTypes(): Promise<
-  { id: string; name: string }[]
-> {
-  const out: { id: string; name: string }[] = []
-  let offset: string | undefined
-  do {
-    const url = offset
-      ? `/services/v2/service_types?offset=${offset}`
-      : "/services/v2/service_types"
-    const json = await fetchPCO(url)
-    const parsed = pcoServiceTypesResponse.parse(json)
-    for (const t of parsed.data) {
-      out.push({ id: t.id, name: t.attributes?.name ?? t.id })
-    }
-    offset = parsed.meta?.next?.offset
-  } while (offset)
-  return out
-}
-
-export async function fetchTeams(
-  serviceTypeId: string
-): Promise<{ id: string; name: string }[]> {
-  const out: { id: string; name: string }[] = []
-  const path = `/services/v2/service_types/${serviceTypeId}/teams`
-  let offset: string | undefined
-  do {
-    const url = offset ? `${path}?offset=${offset}` : path
-    const json = await fetchPCO(url)
-    const parsed = pcoTeamsResponse.parse(json)
-    for (const t of parsed.data) {
-      out.push({ id: t.id, name: t.attributes?.name ?? t.id })
-    }
-    offset = parsed.meta?.next?.offset
-  } while (offset)
-  return out
-}
-
-export async function fetchTeamLeaders(
-  serviceTypeId: string,
-  teamId: string
-): Promise<{ personId: string }[]> {
-  const path = `/services/v2/service_types/${serviceTypeId}/teams/${teamId}/team_leaders`
-  const json = await fetchPCO(path)
-  const parsed = pcoTeamLeadersResponse.parse(json)
-  const result: { personId: string }[] = []
-  for (const item of parsed.data) {
-    const personId = item.relationships?.person?.data?.id ?? item.id
-    result.push({ personId })
-  }
-  return result
-}
-
-export async function fetchTeamMemberPersonIds(
-  serviceTypeId: string,
-  teamId: string
-): Promise<string[]> {
-  const positionPath = `/services/v2/service_types/${serviceTypeId}/teams/${teamId}/team_positions`
-  const positionsJson = await fetchPCO(positionPath)
-  const positionsParsed = pcoPositionsResponse.parse(positionsJson)
-  const personIds = new Set<string>()
-  for (const pos of positionsParsed.data) {
-    const assignPath = `${positionPath}/${pos.id}/person_team_position_assignments`
-    const assignJson = await fetchPCO(assignPath)
-    const assignParsed = pcoAssignmentsResponse.parse(assignJson)
-    for (const a of assignParsed.data) {
-      const id = a.relationships?.person?.data?.id ?? a.id
-      personIds.add(id)
-    }
-  }
-  return [...personIds]
-}
-
-export async function fetchPerson(
-  personId: string
-): Promise<{ id: string; name: string; email: string | undefined }> {
-  const path = `/people/v2/people/${personId}`
-  const json = await fetchPCO(path)
-  const parsed = pcoPersonResponse.parse(json)
-  const d = parsed.data
-  const first = d.attributes?.first_name ?? ""
-  const last = d.attributes?.last_name ?? ""
-  const name = [first, last].filter(Boolean).join(" ") || ""
-  return {
-    id: d.id,
-    name,
-    email: d.attributes?.email,
+    serviceTypes: [...serviceTypes.values()],
+    teams: [...teams.values()],
+    people: [...people.values()],
+    leaders: [...leaders.values()],
+    positions: [...positions.values()],
+    assignments: [...assignments.values()],
   }
 }

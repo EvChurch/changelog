@@ -4,7 +4,7 @@ import { getServerSession } from "next-auth"
 
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/db"
-import { getOrCreateUserByPcoId } from "@/lib/user"
+import { getOrCreatePersonByPcoId } from "@/lib/person"
 
 import DriverActions from "./driver-actions"
 
@@ -16,12 +16,12 @@ export default async function DriverFeedbackPage({
   const session = await getServerSession(authOptions)
   if (!session) redirect("/login")
   const { id } = await params
-  const user = await getOrCreateUserByPcoId(session.user.id, {
+  const person = await getOrCreatePersonByPcoId(session.user.id, {
     email: session.user.email,
-    name: session.user.name,
+    fullName: session.user.name,
   })
   const isDriver = await prisma.driver.findUnique({
-    where: { userId: user.id },
+    where: { id: person.id },
   })
   if (!isDriver) redirect("/driver")
 
@@ -29,7 +29,7 @@ export default async function DriverFeedbackPage({
     where: { id },
     include: {
       team: true,
-      createdBy: { select: { name: true, email: true } },
+      createdBy: { select: { fullName: true, email: true } },
     },
   })
   if (!feedback || feedback.status !== "pending_driver_review") notFound()
@@ -62,7 +62,8 @@ export default async function DriverFeedbackPage({
             {feedback.content}
           </p>
           <p className="mt-3 text-sm text-zinc-500">
-            From: {feedback.createdBy.name ?? feedback.createdBy.email ?? "—"}
+            From:{" "}
+            {feedback.createdBy.fullName ?? feedback.createdBy.email ?? "—"}
           </p>
         </div>
         <DriverActions feedbackId={id} />

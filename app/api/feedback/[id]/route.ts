@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth"
 
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/db"
-import { getOrCreateUserByPcoId } from "@/lib/user"
+import { getOrCreatePersonByPcoId } from "@/lib/person"
 
 export async function PATCH(
   req: Request,
@@ -25,9 +25,9 @@ export async function PATCH(
   }
   const { action, comment } = body
 
-  const user = await getOrCreateUserByPcoId(session.user.id, {
+  const person = await getOrCreatePersonByPcoId(session.user.id, {
     email: session.user.email ?? undefined,
-    name: session.user.name ?? undefined,
+    fullName: session.user.name ?? undefined,
   })
 
   const feedback = await prisma.feedback.findUnique({ where: { id } })
@@ -37,7 +37,7 @@ export async function PATCH(
 
   if (action === "driver_approve" || action === "driver_reject") {
     const isDriver = await prisma.driver.findUnique({
-      where: { userId: user.id },
+      where: { id: person.id },
     })
     if (!isDriver) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
@@ -72,7 +72,9 @@ export async function PATCH(
 
   if (action === "leader_accept") {
     const leader = await prisma.leader.findUnique({
-      where: { userId_teamId: { userId: user.id, teamId: feedback.teamId } },
+      where: {
+        personId_teamId: { personId: person.id, teamId: feedback.teamId },
+      },
     })
     if (!leader) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
@@ -106,16 +108,16 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
   const { id } = await params
-  const user = await getOrCreateUserByPcoId(session.user.id, {
+  const person = await getOrCreatePersonByPcoId(session.user.id, {
     email: session.user.email ?? undefined,
-    name: session.user.name ?? undefined,
+    fullName: session.user.name ?? undefined,
   })
 
   const feedback = await prisma.feedback.findUnique({
     where: { id },
     include: {
       team: true,
-      createdBy: { select: { name: true, email: true } },
+      createdBy: { select: { fullName: true, email: true } },
     },
   })
   if (!feedback) {
@@ -123,15 +125,17 @@ export async function GET(
   }
 
   const isDriver = await prisma.driver.findUnique({
-    where: { userId: user.id },
+    where: { id: person.id },
   })
   const isLeader = await prisma.leader.findUnique({
-    where: { userId_teamId: { userId: user.id, teamId: feedback.teamId } },
+    where: {
+      personId_teamId: { personId: person.id, teamId: feedback.teamId },
+    },
   })
   const canView =
     isDriver ||
     isLeader ||
-    feedback.createdById === user.id ||
+    feedback.personId === person.id ||
     feedback.status === "accepted"
 
   if (!canView) {

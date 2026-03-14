@@ -4,20 +4,20 @@ import { getServerSession } from "next-auth"
 
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/db"
-import { getOrCreateUserByPcoId } from "@/lib/user"
+import { getOrCreatePersonByPcoId } from "@/lib/person"
 
 export default async function LeaderPage() {
   const session = await getServerSession(authOptions)
   if (!session) redirect("/login")
-  const user = await getOrCreateUserByPcoId(session.user.id, {
+  const person = await getOrCreatePersonByPcoId(session.user.id, {
     email: session.user.email,
-    name: session.user.name,
+    fullName: session.user.name,
   })
   const leaderTeams = await prisma.leader.findMany({
-    where: { userId: user.id },
+    where: { personId: person.id },
     include: { team: true },
   })
-  const teamIds = leaderTeams.map((l: { teamId: string }) => l.teamId)
+  const teamIds = leaderTeams.map((l) => l.teamId)
   const pending =
     teamIds.length > 0
       ? await prisma.feedback.findMany({
@@ -27,7 +27,7 @@ export default async function LeaderPage() {
           },
           include: {
             team: { select: { name: true } },
-            createdBy: { select: { name: true, email: true } },
+            createdBy: { select: { fullName: true, email: true } },
           },
           orderBy: { createdAt: "desc" },
         })
@@ -49,7 +49,7 @@ export default async function LeaderPage() {
         </div>
       </header>
       <main className="changelog-container py-8">
-        <h1 className="changelog-page-title">Leader</h1>
+        <h1 className="changelog-page-title">Team Leader</h1>
         {leaderTeams.length === 0 && (
           <p className="changelog-page-subtitle mt-2">
             You are not assigned as a leader for any team.
