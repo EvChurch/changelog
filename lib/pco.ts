@@ -4,9 +4,16 @@ import { env } from "@/lib/env"
 
 const PCO_API = "https://api.planningcenteronline.com"
 
+function pcoBasicAuth(): string {
+  return Buffer.from(
+    `${env.PCO_API_ID}:${env.PCO_API_SECRET}`,
+    "utf8"
+  ).toString("base64")
+}
+
 async function fetchPCO(path: string): Promise<unknown> {
   const res = await fetch(`${PCO_API}${path}`, {
-    headers: { Authorization: `Bearer ${env.PCO_API_KEY}` },
+    headers: { Authorization: `Basic ${pcoBasicAuth()}` },
   })
   if (!res.ok) {
     const text = await res.text()

@@ -14,7 +14,7 @@ Flow: Member submits → Driver reviews → Leader accepts → Members see accep
 
 - **Next.js 15** (App Router), TypeScript, Tailwind
 - **Auth**: NextAuth.js with custom **PCO OAuth** – sign-in only (identifies user; no user token used for API calls).
-- **PCO API key only**: All PCO API calls use only `PCO_API_KEY` (env) as Bearer token in `lib/pco.ts`. OAuth is for identity only; visibility from cached data (DB: drivers, leaders, teams, team members, feedback).
+- **PCO API credentials**: All PCO API calls use `PCO_API_ID` + `PCO_API_SECRET` (env) as HTTP Basic Auth in `lib/pco.ts`. OAuth is identity only; visibility from cached data (DB: drivers, leaders, teams, team members, feedback).
 - **DB**: PostgreSQL (Railway) + **Prisma 7** with `@prisma/adapter-pg`
 - **Teams**: Fetched from PCO Services API (API key). Sync: service types → teams → leaders + members. Optional `PCO_SERVICE_TYPE_ID` for /api/teams filter.
 
@@ -30,10 +30,10 @@ Flow: Member submits → Driver reviews → Leader accepts → Members see accep
 
 ## Env
 
-See `.env.example`: `DATABASE_URL`, `NEXTAUTH_*`, `PCO_CLIENT_ID`, `PCO_CLIENT_SECRET`, `PCO_API_KEY` (required for PCO API; OAuth not used for API), optional `PCO_SERVICE_TYPE_ID`. **Jobs**: PCO sync (all service types → teams → leaders + members) is a pg-boss job; Railway worker (`npm run worker`) runs it every 15 min.
+See `.env.example`: `DATABASE_URL`, `NEXTAUTH_*`, `PCO_CLIENT_ID`, `PCO_CLIENT_SECRET`, `PCO_API_ID`, `PCO_API_SECRET` (required for PCO API; HTTP Basic Auth; OAuth not used for API), optional `PCO_SERVICE_TYPE_ID`. **Jobs**: PCO sync (all service types → teams → leaders + members) is a pg-boss job; Railway worker (`npm run worker`) runs it every 15 min.
 
 ## Conventions
 
-- Use Prisma for all DB access; NextAuth for auth (identity only). PCO API: only `PCO_API_KEY`; visibility from cached DB data.
+- Use Prisma for all DB access; NextAuth for auth (identity only). PCO API: `PCO_API_ID` + `PCO_API_SECRET` (Basic Auth); visibility from cached DB data.
 - Drivers/leaders are in `Driver` / `Leader` tables; no password on User (PCO only).
 - Feedback status: `pending_driver_review` | `pending_leader_review` | `accepted`. Source: `driver` | `member`.
