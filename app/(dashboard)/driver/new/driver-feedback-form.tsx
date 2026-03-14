@@ -1,53 +1,60 @@
-"use client";
+"use client"
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
 
 interface Team {
-  id: string;
-  name: string;
+  id: string
+  name: string
 }
 
 export default function DriverFeedbackForm() {
-  const router = useRouter();
-  const [teams, setTeams] = useState<Team[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [content, setContent] = useState("");
-  const [teamId, setTeamId] = useState("");
+  const router = useRouter()
+  const [teams, setTeams] = useState<Team[]>([])
+  const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [content, setContent] = useState("")
+  const [teamId, setTeamId] = useState("")
 
   useEffect(() => {
     fetch("/api/teams")
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("Failed to load teams"))))
+      .then((r) =>
+        r.ok ? r.json() : Promise.reject(new Error("Failed to load teams"))
+      )
       .then(setTeams)
       .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
-  }, []);
+      .finally(() => setLoading(false))
+  }, [])
 
   const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!content.trim() || !teamId) return;
-    setSubmitting(true);
-    setError(null);
+    e.preventDefault()
+    if (!content.trim() || !teamId) return
+    setSubmitting(true)
+    setError(null)
     try {
       const res = await fetch("/api/feedback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: content.trim(), teamId, asDriver: true }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error ?? "Failed to submit");
-      router.push("/driver");
-      router.refresh();
+        body: JSON.stringify({
+          content: content.trim(),
+          teamId,
+          asDriver: true,
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error ?? "Failed to submit")
+      router.push("/driver")
+      router.refresh()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to submit");
+      setError(err instanceof Error ? err.message : "Failed to submit")
     } finally {
-      setSubmitting(false);
+      setSubmitting(false)
     }
-  };
+  }
 
-  if (loading) return <p className="mt-6 text-sm text-zinc-500">Loading teams…</p>;
+  if (loading)
+    return <p className="mt-6 text-sm text-zinc-500">Loading teams…</p>
 
   return (
     <form onSubmit={onSubmit} className="mt-8 space-y-5">
@@ -97,5 +104,5 @@ export default function DriverFeedbackForm() {
         {submitting ? "Submitting…" : "Submit"}
       </button>
     </form>
-  );
+  )
 }

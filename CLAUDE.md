@@ -14,23 +14,23 @@ Flow: Member submits → Driver reviews → Leader accepts → Members see accep
 
 - **Next.js 15** (App Router), TypeScript, Tailwind
 - **Auth**: NextAuth.js with custom **PCO OAuth** – sign-in only (identifies user; no user token used for API calls).
-- **PCO API key only**: All PCO API calls use only `PCO_API_KEY` (env). OAuth is for identity only; what the user can see comes from cached data (DB: drivers, leaders, teams, feedback). See `lib/server-pco.ts` (`getServerPcoAccessToken`).
+- **PCO API key only**: All PCO API calls use only `PCO_API_KEY` (env) as Bearer token in `lib/pco.ts`. OAuth is for identity only; visibility from cached data (DB: drivers, leaders, teams, team members, feedback).
 - **DB**: PostgreSQL (Railway) + **Prisma 7** with `@prisma/adapter-pg`
-- **Teams**: Fetched from PCO Services API using server token; synced into app DB. Set `PCO_SERVICE_TYPE_ID`.
+- **Teams**: Fetched from PCO Services API (API key). Sync: service types → teams → leaders + members. Optional `PCO_SERVICE_TYPE_ID` for /api/teams filter.
 
 ## Key paths
 
 - **Auth**: `lib/auth.ts` (PCO provider, JWT/session), `app/api/auth/[...nextauth]/route.ts`, `middleware.ts` (protect routes)
-- **DB**: `lib/db.ts` (PrismaClient with pg adapter), `prisma/schema.prisma` (User, Team, Driver, Leader, Feedback)
-- **PCO**: `lib/pco.ts` (fetch teams), `lib/user.ts` (getOrCreateUserByPcoId, getOrCreateTeamByPcoId)
+- **DB**: `lib/db.ts` (PrismaClient with pg adapter), `prisma/schema.prisma` (User, ServiceType, Team, TeamMember, Driver, Leader, Feedback)
+- **PCO**: `lib/pco.ts` (fetchServiceTypes, fetchTeams, fetchTeamLeaders, fetchTeamMemberPersonIds, fetchPerson; API key as Bearer), `lib/user.ts` (getOrCreateUserByPcoId, getOrCreateServiceTypeByPcoId, getOrCreateTeamByPcoId)
 - **Feedback API**: `app/api/feedback/route.ts` (GET list by role/teamId/since/before, POST create), `app/api/feedback/[id]/route.ts` (GET one, PATCH driver_approve | driver_reject | leader_accept)
 - **Teams API**: `app/api/teams/route.ts` (GET: PCO teams synced to DB, returned as `{ id, name }` for dropdowns)
-- **Jobs**: `lib/pg-boss.ts` (getBoss, SYNC_PCO_QUEUE), `worker.ts` (pg-boss worker; run with `npm run worker`)
+- **Jobs**: `lib/pg-boss.ts` (getBoss), `lib/jobs/` (queues + handlers; worker runs `npm run worker`)
 - **Pages**: `app/login`, `app/dashboard`, `app/feedback/new`, `app/driver`, `app/driver/new`, `app/driver/feedback/[id]`, `app/leader`, `app/leader/feedback/[id]`, `app/my-feedback`
 
 ## Env
 
-See `.env.example`: `DATABASE_URL`, `NEXTAUTH_*`, `PCO_CLIENT_ID`, `PCO_CLIENT_SECRET`, `PCO_API_KEY` (required for PCO API; OAuth not used for API), `PCO_SERVICE_TYPE_ID`. **Jobs**: PCO sync is a pg-boss job (`sync-pco`). The **Railway worker** (`npm run worker`) schedules and runs it every 15 min. `/api/cron/sync-pco` enqueues a one-off sync job.
+See `.env.example`: `DATABASE_URL`, `NEXTAUTH_*`, `PCO_CLIENT_ID`, `PCO_CLIENT_SECRET`, `PCO_API_KEY` (required for PCO API; OAuth not used for API), optional `PCO_SERVICE_TYPE_ID`. **Jobs**: PCO sync (all service types → teams → leaders + members) is a pg-boss job; Railway worker (`npm run worker`) runs it every 15 min.
 
 ## Conventions
 

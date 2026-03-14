@@ -1,27 +1,29 @@
-import { getServerSession } from "next-auth";
-import { redirect, notFound } from "next/navigation";
-import Link from "next/link";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db";
-import { getOrCreateUserByPcoId } from "@/lib/user";
-import DriverActions from "./driver-actions";
+import Link from "next/link"
+import { notFound, redirect } from "next/navigation"
+import { getServerSession } from "next-auth"
+
+import { authOptions } from "@/lib/auth"
+import { prisma } from "@/lib/db"
+import { getOrCreateUserByPcoId } from "@/lib/user"
+
+import DriverActions from "./driver-actions"
 
 export default async function DriverFeedbackPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ id: string }>
 }) {
-  const session = await getServerSession(authOptions);
-  if (!session) redirect("/login");
-  const { id } = await params;
+  const session = await getServerSession(authOptions)
+  if (!session) redirect("/login")
+  const { id } = await params
   const user = await getOrCreateUserByPcoId(session.user.id, {
     email: session.user.email,
     name: session.user.name,
-  });
+  })
   const isDriver = await prisma.driver.findUnique({
     where: { userId: user.id },
-  });
-  if (!isDriver) redirect("/driver");
+  })
+  if (!isDriver) redirect("/driver")
 
   const feedback = await prisma.feedback.findUnique({
     where: { id },
@@ -29,14 +31,17 @@ export default async function DriverFeedbackPage({
       team: true,
       createdBy: { select: { name: true, email: true } },
     },
-  });
-  if (!feedback || feedback.status !== "pending_driver_review") notFound();
+  })
+  if (!feedback || feedback.status !== "pending_driver_review") notFound()
 
   return (
     <div className="min-h-screen">
       <header className="changelog-header">
         <div className="changelog-container flex h-14 items-center justify-between">
-          <Link href="/driver" className="font-semibold text-zinc-900 dark:text-zinc-100">
+          <Link
+            href="/driver"
+            className="font-semibold text-zinc-900 dark:text-zinc-100"
+          >
             Changelog
           </Link>
           <span className="text-sm text-zinc-500 dark:text-zinc-400">
@@ -45,13 +50,14 @@ export default async function DriverFeedbackPage({
         </div>
       </header>
       <main className="changelog-container py-8">
-        <Link href="/driver" className="text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300">
+        <Link
+          href="/driver"
+          className="text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+        >
           ← Back to driver
         </Link>
         <div className="changelog-card mt-6 p-5">
-          <p className="changelog-section-title">
-            {feedback.team.name}
-          </p>
+          <p className="changelog-section-title">{feedback.team.name}</p>
           <p className="mt-3 whitespace-pre-wrap text-zinc-700 dark:text-zinc-300">
             {feedback.content}
           </p>
@@ -62,5 +68,5 @@ export default async function DriverFeedbackPage({
         <DriverActions feedbackId={id} />
       </main>
     </div>
-  );
+  )
 }

@@ -1,6 +1,7 @@
-import { PrismaClient } from "@/generated/prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaPg } from "@prisma/adapter-pg"
 
-const connectionString = process.env.DATABASE_URL ?? "";
-const adapter = new PrismaPg({ connectionString });
-export const prisma = new PrismaClient({ adapter });
+import { PrismaClient } from "@/generated/prisma/client"
+import { env } from "@/lib/env"
+
+const adapter = new PrismaPg({ connectionString: env.DATABASE_URL })
+export const prisma = new PrismaClient({ adapter })

@@ -1,16 +1,20 @@
-import { getServerSession } from "next-auth";
-import { redirect } from "next/navigation";
-import Link from "next/link";
-import { authOptions } from "@/lib/auth";
+import Link from "next/link"
+import { redirect } from "next/navigation"
+import { getServerSession } from "next-auth"
+
+import { authOptions } from "@/lib/auth"
 
 export default async function DashboardPage() {
-  const session = await getServerSession(authOptions);
-  if (!session) redirect("/login");
+  const session = await getServerSession(authOptions)
+  if (!session) redirect("/login")
   return (
     <div className="min-h-screen">
       <header className="changelog-header">
         <div className="changelog-container flex h-14 items-center justify-between">
-          <Link href="/dashboard" className="font-semibold text-zinc-900 dark:text-zinc-100">
+          <Link
+            href="/dashboard"
+            className="font-semibold text-zinc-900 dark:text-zinc-100"
+          >
             Changelog
           </Link>
           <span className="text-sm text-zinc-500 dark:text-zinc-400">
@@ -21,7 +25,8 @@ export default async function DashboardPage() {
       <main className="changelog-container py-8">
         <h1 className="changelog-page-title">Dashboard</h1>
         <p className="changelog-page-subtitle">
-          Submit feedback, review as driver or leader, or view accepted feedback.
+          Submit feedback, review as driver or leader, or view accepted
+          feedback.
         </p>
         <nav className="mt-8 flex flex-wrap gap-3">
           <Link href="/feedback/new" className="changelog-btn-primary">
@@ -39,5 +44,5 @@ export default async function DashboardPage() {
         </nav>
       </main>
     </div>
-  );
+  )
 }

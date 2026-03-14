@@ -1,18 +1,21 @@
-import type { NextAuthOptions } from "next-auth";
-import type { OAuthConfig } from "next-auth/providers/oauth";
+import type { NextAuthOptions } from "next-auth"
+import type { OAuthConfig } from "next-auth/providers/oauth"
+
+import { env } from "@/lib/env"
 
 interface PCOProfile {
-  sub: string;
-  name?: string;
-  email?: string;
-  organization_name?: string;
+  sub: string
+  name?: string
+  email?: string
+  organization_name?: string
 }
 
 const PlanningCenterProvider: OAuthConfig<PCOProfile> = {
   id: "pco",
   name: "Planning Center Online",
   type: "oauth",
-  wellKnown: "https://api.planningcenteronline.com/.well-known/openid-configuration",
+  wellKnown:
+    "https://api.planningcenteronline.com/.well-known/openid-configuration",
   authorization: {
     params: {
       scope: "openid people services",
@@ -24,15 +27,15 @@ const PlanningCenterProvider: OAuthConfig<PCOProfile> = {
       name: profile.name ?? undefined,
       email: profile.email ?? undefined,
       image: undefined,
-    };
+    }
   },
-  clientId: process.env.PCO_CLIENT_ID!,
-  clientSecret: process.env.PCO_CLIENT_SECRET!,
-};
+  clientId: env.PCO_CLIENT_ID,
+  clientSecret: env.PCO_CLIENT_SECRET,
+}
 
 export const authOptions: NextAuthOptions = {
   providers: [PlanningCenterProvider],
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: env.NEXTAUTH_SECRET,
   session: {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60,
@@ -43,16 +46,16 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.id = user.id;
-        token.email = user.email;
+        token.id = user.id
+        token.email = user.email
       }
-      return token;
+      return token
     },
     session({ session, token }) {
       if (session.user) {
-        session.user.id = token.id as string;
+        session.user.id = token.id as string
       }
-      return session;
+      return session
     },
   },
-};
+}

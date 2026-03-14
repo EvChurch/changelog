@@ -1,28 +1,28 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "next/navigation"
+import { useState } from "react"
 
 export default function DriverActions({ feedbackId }: { feedbackId: string }) {
-  const router = useRouter();
-  const [comment, setComment] = useState("");
-  const [loading, setLoading] = useState<"approve" | "reject" | null>(null);
+  const router = useRouter()
+  const [comment, setComment] = useState("")
+  const [loading, setLoading] = useState<"approve" | "reject" | null>(null)
 
   const submit = async (action: "driver_approve" | "driver_reject") => {
-    setLoading(action === "driver_approve" ? "approve" : "reject");
+    setLoading(action === "driver_approve" ? "approve" : "reject")
     try {
       const res = await fetch(`/api/feedback/${feedbackId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action, comment: comment.trim() || undefined }),
-      });
-      if (!res.ok) throw new Error("Request failed");
-      router.push("/driver");
-      router.refresh();
+      })
+      if (!res.ok) throw new Error("Request failed")
+      router.push("/driver")
+      router.refresh()
     } finally {
-      setLoading(null);
+      setLoading(null)
     }
-  };
+  }
 
   return (
     <div className="mt-8 space-y-5">
@@ -58,5 +58,5 @@ export default function DriverActions({ feedbackId }: { feedbackId: string }) {
         </button>
       </div>
     </div>
-  );
+  )
 }

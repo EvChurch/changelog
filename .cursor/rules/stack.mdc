@@ -6,6 +6,6 @@ alwaysApply: true
 # Church Feedback – stack and patterns
 
 - **DB**: Use Prisma (`lib/db.ts`) for all database access. Schema in `prisma/schema.prisma`.
-- **Auth**: Use NextAuth; session from `getServerSession(authOptions)` (from `lib/auth.ts`). Session has `user.id` (PCO sub) and optional `accessToken` for PCO API. Resolve app user with `getOrCreateUserByPcoId(session.user.id, …)` from `lib/user.ts`.
-- **Teams**: From PCO; sync via `getOrCreateTeamByPcoId` when listing teams in `app/api/teams`. Use app `Team.id` when creating feedback.
+- **Auth**: Use NextAuth; session from `getServerSession(authOptions)` (from `lib/auth.ts`). Session has `user.id` (PCO sub). Resolve app user with `getOrCreateUserByPcoId(session.user.id, …)` from `lib/user.ts`.
+- **Teams**: From PCO; sync service types → teams → leaders + members in `lib/jobs/sync-pco`. List/sync via `app/api/teams` (optional `serviceTypeId`). Use app `Team.id` when creating feedback.
 - **Roles**: Driver = row in `Driver`; Leader = row in `Leader` (per team). Check before driver/leader-only actions.

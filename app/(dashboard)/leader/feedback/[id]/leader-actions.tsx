@@ -1,15 +1,15 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "next/navigation"
+import { useState } from "react"
 
 export default function LeaderActions({ feedbackId }: { feedbackId: string }) {
-  const router = useRouter();
-  const [comment, setComment] = useState("");
-  const [loading, setLoading] = useState(false);
+  const router = useRouter()
+  const [comment, setComment] = useState("")
+  const [loading, setLoading] = useState(false)
 
   const submit = async () => {
-    setLoading(true);
+    setLoading(true)
     try {
       const res = await fetch(`/api/feedback/${feedbackId}`, {
         method: "PATCH",
@@ -18,14 +18,14 @@ export default function LeaderActions({ feedbackId }: { feedbackId: string }) {
           action: "leader_accept",
           comment: comment.trim() || undefined,
         }),
-      });
-      if (!res.ok) throw new Error("Request failed");
-      router.push("/leader");
-      router.refresh();
+      })
+      if (!res.ok) throw new Error("Request failed")
+      router.push("/leader")
+      router.refresh()
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   return (
     <div className="mt-8 space-y-5">
@@ -51,5 +51,5 @@ export default function LeaderActions({ feedbackId }: { feedbackId: string }) {
         {loading ? "Accepting…" : "Accept feedback"}
       </button>
     </div>
-  );
+  )
 }
