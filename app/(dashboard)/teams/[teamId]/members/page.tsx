@@ -5,9 +5,9 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { getOrCreatePersonByPcoId } from "@/lib/person"
 
-import TeamOverviewClient from "./team-overview-client"
+import TeamMembersClient from "../team-members-client"
 
-export default async function TeamOverviewPage({
+export default async function TeamMembersPage({
   params,
 }: {
   params: Promise<{ teamId: string }>
@@ -26,13 +26,25 @@ export default async function TeamOverviewPage({
     select: {
       id: true,
       name: true,
-      descriptionMarkdown: true,
       serviceTypeId: true,
-      leaders: { select: { personId: true } },
-      positions: {
-        select: {
-          assignments: { select: { personId: true } },
+      leaders: {
+        include: {
+          person: {
+            select: { id: true, fullName: true, email: true },
+          },
         },
+      },
+      positions: {
+        include: {
+          assignments: {
+            include: {
+              person: {
+                select: { id: true, fullName: true, email: true },
+              },
+            },
+          },
+        },
+        orderBy: { name: "asc" },
       },
     },
   })
@@ -57,13 +69,26 @@ export default async function TeamOverviewPage({
 
   if (!isLeader && !isMember && !isEligibleDriver) notFound()
 
-  const canEditContent = isLeader || isEligibleDriver
+  const roster = {
+    leaders: team.leaders
+      .map((l) => ({
+        id: l.person.id,
+        fullName: l.person.fullName,
+        email: l.person.email,
+      }))
+      .sort((a, b) => a.fullName.localeCompare(b.fullName)),
+    positions: team.positions.map((position) => ({
+      id: position.id,
+      name: position.name?.trim() || "Team Member",
+      members: position.assignments
+        .map((a) => ({
+          id: a.person.id,
+          fullName: a.person.fullName,
+          email: a.person.email,
+        }))
+        .sort((a, b) => a.fullName.localeCompare(b.fullName)),
+    })),
+  }
 
-  return (
-    <TeamOverviewClient
-      teamId={team.id}
-      canEditContent={canEditContent}
-      teamDescriptionMarkdown={team.descriptionMarkdown}
-    />
-  )
+  return <TeamMembersClient teamId={team.id} roster={roster} />
 }

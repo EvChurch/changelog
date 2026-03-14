@@ -5,43 +5,47 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { getOrCreatePersonByPcoId } from "@/lib/person"
 
-import TeamOverviewClient from "./team-overview-client"
+import PositionDescriptionClient from "./position-description-client"
 
-export default async function TeamOverviewPage({
+export default async function PositionDescriptionPage({
   params,
 }: {
-  params: Promise<{ teamId: string }>
+  params: Promise<{ teamId: string; positionId: string }>
 }) {
   const session = await getServerSession(authOptions)
   if (!session) redirect("/login")
 
-  const { teamId } = await params
+  const { teamId, positionId } = await params
   const person = await getOrCreatePersonByPcoId(session.user.id, {
     email: session.user.email ?? undefined,
     fullName: session.user.name ?? undefined,
   })
 
-  const team = await prisma.team.findUnique({
-    where: { id: teamId },
+  const position = await prisma.position.findUnique({
+    where: { id: positionId, teamId },
     select: {
       id: true,
       name: true,
       descriptionMarkdown: true,
-      serviceTypeId: true,
-      leaders: { select: { personId: true } },
-      positions: {
+      team: {
         select: {
-          assignments: { select: { personId: true } },
+          id: true,
+          serviceTypeId: true,
+          leaders: { select: { personId: true } },
+          positions: {
+            select: { assignments: { select: { personId: true } } },
+          },
         },
       },
     },
   })
 
-  if (!team) notFound()
+  if (!position) notFound()
 
+  const team = position.team
   const isLeader = team.leaders.some((l) => l.personId === person.id)
-  const isMember = team.positions.some((position) =>
-    position.assignments.some((a) => a.personId === person.id)
+  const isMember = team.positions.some((p) =>
+    p.assignments.some((a) => a.personId === person.id)
   )
   const isEligibleDriver = Boolean(
     team.serviceTypeId &&
@@ -60,10 +64,10 @@ export default async function TeamOverviewPage({
   const canEditContent = isLeader || isEligibleDriver
 
   return (
-    <TeamOverviewClient
-      teamId={team.id}
+    <PositionDescriptionClient
+      positionId={position.id}
       canEditContent={canEditContent}
-      teamDescriptionMarkdown={team.descriptionMarkdown}
+      descriptionMarkdown={position.descriptionMarkdown}
     />
   )
 }

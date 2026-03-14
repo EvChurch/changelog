@@ -26,7 +26,7 @@ Flow: Member submits → Driver reviews → Team Leader accepts → Members see 
 - **Feedback API**: `app/api/feedback/route.ts` (GET list by role/teamId/since/before, POST create), `app/api/feedback/[id]/route.ts` (GET one, PATCH driver_approve | driver_reject | leader_accept)
 - **Teams API**: `app/api/teams/route.ts` (GET: PCO teams synced to DB, returned as `{ id, name }` for dropdowns)
 - **Jobs**: `lib/pg-boss.ts` (getBoss), `lib/jobs/` (queues + handlers; worker runs `npm run worker`)
-- **Pages**: `app/login`, `app/dashboard`, `app/feedback/new`, `app/driver`, `app/driver/new`, `app/driver/feedback/[id]`, `app/leader`, `app/leader/feedback/[id]`, `app/my-feedback`
+- **Pages**: `app/login`, `app/dashboard`, `app/feedback/new`, `app/driver`, `app/driver/new`, `app/driver/feedback/[id]`, `app/leader`, `app/leader/feedback/[id]`, `app/my-feedback`. **Team routes**: `teams/[teamId]` (overview), `teams/[teamId]/feedback`, `teams/[teamId]/members`; role/position under `team/[teamId]/[positionId]` (description) and `team/[teamId]/[positionId]/goals`.
 
 ## Env
 
