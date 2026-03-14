@@ -22,15 +22,42 @@ export async function GET(req: Request) {
   const before = searchParams.get("before")
   const limit = Math.min(Number(searchParams.get("limit")) || 50, 100)
 
+  const canViewTeam = async (id: string) => {
+    const [leader, assignment] = await Promise.all([
+      prisma.leader.findUnique({
+        where: {
+          personId_teamId: {
+            personId: person.id,
+            teamId: id,
+          },
+        },
+      }),
+      prisma.assignment.findFirst({
+        where: {
+          personId: person.id,
+          position: { teamId: id },
+        },
+      }),
+    ])
+    return Boolean(leader || assignment)
+  }
+
   if (role === "driver") {
-    const isDriver = await prisma.driver.findUnique({
-      where: { id: person.id },
+    const driverServiceTypes = await prisma.driver.findMany({
+      where: { personId: person.id },
+      select: { serviceTypeId: true },
     })
-    if (!isDriver) {
+    const serviceTypeIds = driverServiceTypes.map(
+      (driver) => driver.serviceTypeId
+    )
+    if (serviceTypeIds.length === 0) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
     const list = await prisma.feedback.findMany({
-      where: { status: "pending_driver_review" },
+      where: {
+        status: "pending_driver_review",
+        team: { serviceTypeId: { in: serviceTypeIds } },
+      },
       include: {
         team: { select: { name: true } },
         createdBy: { select: { fullName: true, email: true } },
@@ -56,7 +83,35 @@ export async function GET(req: Request) {
         status: "pending_leader_review",
       },
       include: {
-        team: { select: { name: true } },
+        team: { select: { id: true, name: true } },
+        createdBy: { select: { fullName: true, email: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+    })
+    return NextResponse.json(list)
+  }
+
+  if (role === "team_leader") {
+    if (!teamId) {
+      return NextResponse.json({ error: "teamId required" }, { status: 400 })
+    }
+    const isLeader = await prisma.leader.findUnique({
+      where: {
+        personId_teamId: {
+          personId: person.id,
+          teamId,
+        },
+      },
+    })
+    if (!isLeader) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+
+    const list = await prisma.feedback.findMany({
+      where: { teamId },
+      include: {
+        team: { select: { id: true, name: true } },
         createdBy: { select: { fullName: true, email: true } },
       },
       orderBy: { createdAt: "desc" },
@@ -66,6 +121,9 @@ export async function GET(req: Request) {
   }
 
   if (teamId != null || since != null || before != null) {
+    if (teamId && !(await canViewTeam(teamId))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
     const where: {
       status: "accepted"
       teamId?: string
@@ -84,7 +142,7 @@ export async function GET(req: Request) {
     const list = await prisma.feedback.findMany({
       where,
       include: {
-        team: { select: { name: true } },
+        team: { select: { id: true, name: true } },
         createdBy: { select: { fullName: true, email: true } },
       },
       orderBy: { acceptedAt: "desc" },
@@ -125,6 +183,7 @@ export async function POST(req: Request) {
 
   const team = await prisma.team.findUnique({
     where: { id: pcoTeamIdOrOurId },
+    select: { id: true, serviceTypeId: true },
   })
   if (!team) {
     return NextResponse.json(
@@ -133,18 +192,23 @@ export async function POST(req: Request) {
     )
   }
 
-  const isDriver = await prisma.driver
-    .findUnique({
-      where: { id: person.id },
-    })
-    .then(Boolean)
+  const isDriverForTeamServiceType =
+    Boolean(team.serviceTypeId) &&
+    (await prisma.driver.findFirst({
+      where: {
+        personId: person.id,
+        serviceTypeId: team.serviceTypeId ?? undefined,
+      },
+    }))
 
   const status =
-    asDriver && isDriver
+    asDriver && isDriverForTeamServiceType
       ? ("pending_leader_review" as const)
       : ("pending_driver_review" as const)
   const source =
-    asDriver && isDriver ? ("driver" as const) : ("member" as const)
+    asDriver && isDriverForTeamServiceType
+      ? ("driver" as const)
+      : ("member" as const)
 
   const feedback = await prisma.feedback.create({
     data: {

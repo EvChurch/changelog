@@ -15,8 +15,8 @@ export default async function DriverNewPage() {
     email: session.user.email,
     fullName: session.user.name,
   })
-  const isDriver = await prisma.driver.findUnique({
-    where: { id: person.id },
+  const isDriver = await prisma.driver.findFirst({
+    where: { personId: person.id },
   })
   if (!isDriver) redirect("/driver")
 

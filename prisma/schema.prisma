@@ -21,8 +21,15 @@ enum FeedbackSource {
   member
 }
 
+enum Provider {
+  pco
+  rock
+}
+
 model Person {
-  id          String       @id
+  id          String       @id @default(cuid())
+  remoteId    String
+  provider    Provider
   email       String?
   fullName    String
   firstName   String
@@ -30,22 +37,31 @@ model Person {
   image       String?
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
-  driver      Driver?
+  drivers     Driver[]
   leaders     Leader[]
   assignments Assignment[]
   feedback    Feedback[]   @relation("CreatedBy")
+
+  @@unique([remoteId, provider])
 }
 
 model ServiceType {
-  id        String   @id
+  id        String   @id @default(cuid())
+  remoteId  String
+  provider  Provider
   name      String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   teams     Team[]
+  drivers   Driver[]
+
+  @@unique([remoteId, provider])
 }
 
 model Team {
-  id            String       @id
+  id            String       @id @default(cuid())
+  remoteId      String
+  provider      Provider
   serviceTypeId String?
   name          String
   createdAt     DateTime     @default(now())
@@ -54,39 +70,57 @@ model Team {
   leaders       Leader[]
   positions     Position[]
   feedback      Feedback[]
+
+  @@unique([remoteId, provider])
 }
 
 model Position {
-  id          String       @id
+  id          String       @id @default(cuid())
+  remoteId    String
+  provider    Provider
   teamId      String
   name        String?
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   team        Team         @relation(fields: [teamId], references: [id], onDelete: Cascade)
   assignments Assignment[]
+
+  @@unique([remoteId, provider])
 }
 
 model Assignment {
-  personId     String
-  positionId   String
-  person       Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
-  teamPosition Position @relation(fields: [positionId], references: [id], onDelete: Cascade)
+  id         String   @id @default(cuid())
+  remoteId   String
+  provider   Provider
+  personId   String
+  positionId String
+  person     Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
+  position   Position @relation(fields: [positionId], references: [id], onDelete: Cascade)
 
   @@unique([personId, positionId])
+  @@unique([remoteId, provider])
 }
 
 model Driver {
-  id     String @id
-  person Person @relation(fields: [id], references: [id], onDelete: Cascade)
+  personId      String
+  serviceTypeId String
+  person        Person      @relation(fields: [personId], references: [id], onDelete: Cascade)
+  serviceType   ServiceType @relation(fields: [serviceTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([personId, serviceTypeId])
 }
 
 model Leader {
+  id       String   @id @default(cuid())
+  remoteId String
+  provider Provider
   personId String
   teamId   String
-  person   Person @relation(fields: [personId], references: [id], onDelete: Cascade)
-  team     Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  person   Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
+  team     Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
 
-  @@id([personId, teamId])
+  @@unique([personId, teamId])
+  @@unique([remoteId, provider])
 }
 
 model Feedback {

@@ -20,19 +20,24 @@ export default async function DriverFeedbackPage({
     email: session.user.email,
     fullName: session.user.name,
   })
-  const isDriver = await prisma.driver.findUnique({
-    where: { id: person.id },
-  })
-  if (!isDriver) redirect("/driver")
-
   const feedback = await prisma.feedback.findUnique({
     where: { id },
     include: {
-      team: true,
+      team: { select: { name: true, serviceTypeId: true } },
       createdBy: { select: { fullName: true, email: true } },
     },
   })
   if (!feedback || feedback.status !== "pending_driver_review") notFound()
+
+  const isDriver =
+    Boolean(feedback.team.serviceTypeId) &&
+    (await prisma.driver.findFirst({
+      where: {
+        personId: person.id,
+        serviceTypeId: feedback.team.serviceTypeId ?? undefined,
+      },
+    }))
+  if (!isDriver) redirect("/driver")
 
   return (
     <div className="min-h-screen">

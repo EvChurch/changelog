@@ -26,9 +26,10 @@ export async function getOrCreatePersonByPcoId(
 ) {
   const name = normalizeName(seed, pcoId)
   return prisma.person.upsert({
-    where: { id: pcoId },
+    where: { remoteId_provider: { remoteId: pcoId, provider: "pco" } },
     create: {
-      id: pcoId,
+      remoteId: pcoId,
+      provider: "pco",
       email: seed.email ?? null,
       fullName: name.fullName,
       firstName: name.firstName,
@@ -51,8 +52,8 @@ export async function getOrCreatePersonByPcoId(
 
 export async function getOrCreateServiceTypeByPcoId(id: string, name: string) {
   return prisma.serviceType.upsert({
-    where: { id },
-    create: { id, name },
+    where: { remoteId_provider: { remoteId: id, provider: "pco" } },
+    create: { remoteId: id, provider: "pco", name },
     update: { name },
   })
 }
@@ -63,17 +64,22 @@ export async function getOrCreateTeamByPcoId(
   serviceTypeId?: string | null
 ) {
   return prisma.team.upsert({
-    where: { id },
-    create: { id, name, serviceTypeId: serviceTypeId ?? null },
+    where: { remoteId_provider: { remoteId: id, provider: "pco" } },
+    create: {
+      remoteId: id,
+      provider: "pco",
+      name,
+      serviceTypeId: serviceTypeId ?? null,
+    },
     update: { name, serviceTypeId: serviceTypeId ?? null },
   })
 }
 
 export async function getOrCreateDefaultPosition(teamId: string) {
-  const id = `${teamId}:member`
+  const remoteId = `${teamId}:member`
   return prisma.position.upsert({
-    where: { id },
-    create: { id, teamId, name: "Member" },
+    where: { remoteId_provider: { remoteId, provider: "pco" } },
+    create: { remoteId, provider: "pco", teamId, name: "Member" },
     update: {},
   })
 }

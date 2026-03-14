@@ -124,112 +124,208 @@ export async function fetchTeamsSnapshot(): Promise<TeamsSnapshot> {
     for (const team of teamModels) {
       if (team.service_type) {
         serviceTypes.set(team.service_type.id, {
-          where: { id: team.service_type.id },
-          create: { id: team.service_type.id, name: team.service_type.name },
-          update: { name: team.service_type.name },
+          where: {
+            remoteId_provider: {
+              remoteId: team.service_type.id,
+              provider: "pco",
+            },
+          },
+          create: {
+            name: team.service_type.name,
+            remoteId: team.service_type.id,
+            provider: "pco",
+          },
+          update: {
+            name: team.service_type.name,
+          },
         })
       }
 
       teams.set(team.id, {
-        where: { id: team.id },
+        where: {
+          remoteId_provider: {
+            remoteId: team.id,
+            provider: "pco",
+          },
+        },
         create: {
-          id: team.id,
+          remoteId: team.id,
+          provider: "pco",
           name: team.name,
           serviceType: team.service_type
-            ? { connect: { id: team.service_type.id } }
+            ? {
+                connect: {
+                  remoteId_provider: {
+                    remoteId: team.service_type.id,
+                    provider: "pco",
+                  },
+                },
+              }
             : undefined,
         },
         update: {
           name: team.name,
           serviceType: team.service_type
-            ? { connect: { id: team.service_type.id } }
+            ? {
+                connect: {
+                  remoteId_provider: {
+                    remoteId: team.service_type.id,
+                    provider: "pco",
+                  },
+                },
+              }
             : undefined,
         },
       })
 
       for (const person of team.people) {
         people.set(person.id, {
-          where: { id: person.id },
-          create: {
-            id: person.id,
-            fullName: person.full_name,
-            firstName: person.first_name,
-            lastName: person.last_name,
-          },
-          update: {
-            fullName: person.full_name,
-            firstName: person.first_name,
-            lastName: person.last_name,
-          },
-        })
-      }
-
-      for (const team_position of team.team_positions) {
-        positions.set(team_position.id, {
-          where: { id: team_position.id },
-          create: {
-            id: team_position.id,
-            team: { connect: { id: team_position.team.id } },
-            name: team_position.name,
-          },
-          update: {
-            team: { connect: { id: team_position.team.id } },
-            name: team_position.name,
-          },
-        })
-      }
-
-      for (const team_leader of team.team_leaders) {
-        leaders.set(`${team_leader.person.id}:${team_leader.team.id}`, {
           where: {
-            personId_teamId: {
-              personId: team_leader.person.id,
-              teamId: team_leader.team.id,
-            },
+            remoteId_provider: { remoteId: person.id, provider: "pco" },
           },
           create: {
-            person: { connect: { id: team_leader.person.id } },
-            team: { connect: { id: team_leader.team.id } },
+            remoteId: person.id,
+            provider: "pco",
+            fullName: person.full_name,
+            firstName: person.first_name,
+            lastName: person.last_name,
           },
           update: {
-            team: { connect: { id: team_leader.team.id } },
-            person: { connect: { id: team_leader.person.id } },
+            fullName: person.full_name,
+            firstName: person.first_name,
+            lastName: person.last_name,
           },
         })
       }
 
-      for (const person_team_position_assignment of team.person_team_position_assignments) {
-        assignments.set(
-          `${person_team_position_assignment.person.id}:${person_team_position_assignment.team_position.id}`,
-          {
-            where: {
-              personId_positionId: {
-                personId: person_team_position_assignment.person.id,
-                positionId: person_team_position_assignment.team_position.id,
-              },
-            },
-            create: {
-              person: {
-                connect: { id: person_team_position_assignment.person.id },
-              },
-              teamPosition: {
-                connect: {
-                  id: person_team_position_assignment.team_position.id,
+      for (const position of team.team_positions) {
+        positions.set(position.id, {
+          where: {
+            remoteId_provider: { remoteId: position.id, provider: "pco" },
+          },
+          create: {
+            remoteId: position.id,
+            provider: "pco",
+            team: {
+              connect: {
+                remoteId_provider: {
+                  remoteId: position.team.id,
+                  provider: "pco",
                 },
               },
             },
-            update: {
-              person: {
-                connect: { id: person_team_position_assignment.person.id },
-              },
-              teamPosition: {
-                connect: {
-                  id: person_team_position_assignment.team_position.id,
+            name: position.name,
+          },
+          update: {
+            team: {
+              connect: {
+                remoteId_provider: {
+                  remoteId: position.team.id,
+                  provider: "pco",
                 },
               },
             },
-          }
-        )
+            name: position.name,
+          },
+        })
+      }
+
+      for (const leader of team.team_leaders) {
+        leaders.set(leader.id, {
+          where: {
+            remoteId_provider: {
+              remoteId: leader.id,
+              provider: "pco",
+            },
+          },
+          create: {
+            remoteId: leader.id,
+            provider: "pco",
+            person: {
+              connect: {
+                remoteId_provider: {
+                  remoteId: leader.person.id,
+                  provider: "pco",
+                },
+              },
+            },
+            team: {
+              connect: {
+                remoteId_provider: {
+                  remoteId: leader.team.id,
+                  provider: "pco",
+                },
+              },
+            },
+          },
+          update: {
+            team: {
+              connect: {
+                remoteId_provider: {
+                  remoteId: leader.team.id,
+                  provider: "pco",
+                },
+              },
+            },
+            person: {
+              connect: {
+                remoteId_provider: {
+                  remoteId: leader.person.id,
+                  provider: "pco",
+                },
+              },
+            },
+          },
+        })
+      }
+
+      for (const assignment of team.person_team_position_assignments) {
+        assignments.set(assignment.id, {
+          where: {
+            remoteId_provider: {
+              remoteId: assignment.id,
+              provider: "pco",
+            },
+          },
+          create: {
+            remoteId: assignment.id,
+            provider: "pco",
+            person: {
+              connect: {
+                remoteId_provider: {
+                  remoteId: assignment.person.id,
+                  provider: "pco",
+                },
+              },
+            },
+            position: {
+              connect: {
+                remoteId_provider: {
+                  remoteId: assignment.team_position.id,
+                  provider: "pco",
+                },
+              },
+            },
+          },
+          update: {
+            person: {
+              connect: {
+                remoteId_provider: {
+                  remoteId: assignment.person.id,
+                  provider: "pco",
+                },
+              },
+            },
+            position: {
+              connect: {
+                remoteId_provider: {
+                  remoteId: assignment.team_position.id,
+                  provider: "pco",
+                },
+              },
+            },
+          },
+        })
       }
     }
     if (teamModels.length < PCO_TEAMS_PAGE_SIZE) break

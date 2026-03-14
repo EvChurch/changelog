@@ -13,18 +13,28 @@ export default async function DriverPage() {
     email: session.user.email,
     fullName: session.user.name,
   })
-  const isDriver = await prisma.driver.findUnique({
-    where: { id: person.id },
+  const driverServiceTypes = await prisma.driver.findMany({
+    where: { personId: person.id },
+    select: { serviceTypeId: true },
   })
+  const serviceTypeIds = driverServiceTypes.map(
+    (driver) => driver.serviceTypeId
+  )
+  const isDriver = serviceTypeIds.length > 0
 
-  const pendingReview = await prisma.feedback.findMany({
-    where: { status: "pending_driver_review" },
-    include: {
-      team: { select: { name: true } },
-      createdBy: { select: { fullName: true, email: true } },
-    },
-    orderBy: { createdAt: "desc" },
-  })
+  const pendingReview = isDriver
+    ? await prisma.feedback.findMany({
+        where: {
+          status: "pending_driver_review",
+          team: { serviceTypeId: { in: serviceTypeIds } },
+        },
+        include: {
+          team: { select: { name: true } },
+          createdBy: { select: { fullName: true, email: true } },
+        },
+        orderBy: { createdAt: "desc" },
+      })
+    : []
 
   return (
     <div className="min-h-screen">

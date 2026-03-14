@@ -45,7 +45,7 @@ body {
 }
 
 .changelog-container {
-  @apply mx-auto max-w-3xl px-4 sm:px-6;
+  @apply w-full px-4 sm:px-6;
 }
 
 .changelog-card {
