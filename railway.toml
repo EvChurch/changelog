@@ -1,3 +1,4 @@
+# Web service (default). For worker: add a second service, same repo, start command: npm run worker
 [build]
 builder = "nixpacks"
 

@@ -41,19 +41,17 @@ export const authOptions: NextAuthOptions = {
     signIn: "/login",
   },
   callbacks: {
-    jwt({ token, user, account }) {
+    async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
         token.email = user.email;
       }
-      if (account?.access_token) token.accessToken = account.access_token;
       return token;
     },
     session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string;
       }
-      (session as { accessToken?: string }).accessToken = token.accessToken as string | undefined;
       return session;
     },
   },
