@@ -8,6 +8,19 @@ export async function SyncPcoJob(): Promise<void> {
   const { people, serviceTypes, teams, leaders, positions, assignments } =
     await fetchTeamsSnapshot()
 
+  const syncedPeople = people.map((p) => p.where.remoteId_provider!.remoteId)
+  const syncedServiceTypes = serviceTypes.map(
+    (s) => s.where.remoteId_provider!.remoteId
+  )
+  const syncedTeams = teams.map((t) => t.where.remoteId_provider!.remoteId)
+  const syncedLeaders = leaders.map((l) => l.where.remoteId_provider!.remoteId)
+  const syncedPositions = positions.map(
+    (p) => p.where.remoteId_provider!.remoteId
+  )
+  const syncedAssignments = assignments.map(
+    (a) => a.where.remoteId_provider!.remoteId
+  )
+
   console.log("Updating People")
 
   for (const person of people) {
@@ -60,5 +73,40 @@ export async function SyncPcoJob(): Promise<void> {
   for (const assignment of assignments) {
     await prisma.assignment.upsert(assignment)
   }
+
+  console.log("Pruning PCO records no longer in upstream")
+
+  const delAssignments = await prisma.assignment.deleteMany({
+    where: { remoteId: { notIn: syncedAssignments }, provider: "pco" },
+  })
+  if (delAssignments.count)
+    console.log(`Deleted ${delAssignments.count} assignments`)
+
+  const delLeaders = await prisma.leader.deleteMany({
+    where: { remoteId: { notIn: syncedLeaders }, provider: "pco" },
+  })
+  if (delLeaders.count) console.log(`Deleted ${delLeaders.count} leaders`)
+
+  const delPositions = await prisma.position.deleteMany({
+    where: { remoteId: { notIn: syncedPositions }, provider: "pco" },
+  })
+  if (delPositions.count) console.log(`Deleted ${delPositions.count} positions`)
+
+  const delTeams = await prisma.team.deleteMany({
+    where: { remoteId: { notIn: syncedTeams }, provider: "pco" },
+  })
+  if (delTeams.count) console.log(`Deleted ${delTeams.count} teams`)
+
+  const delServiceTypes = await prisma.serviceType.deleteMany({
+    where: { remoteId: { notIn: syncedServiceTypes }, provider: "pco" },
+  })
+  if (delServiceTypes.count)
+    console.log(`Deleted ${delServiceTypes.count} service types`)
+
+  const delPeople = await prisma.person.deleteMany({
+    where: { remoteId: { notIn: syncedPeople }, provider: "pco" },
+  })
+  if (delPeople.count) console.log(`Deleted ${delPeople.count} people`)
+
   console.log("PCO data synced successfully")
 }

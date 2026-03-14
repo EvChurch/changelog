@@ -21,6 +21,13 @@ enum FeedbackSource {
   member
 }
 
+enum ObjectiveStatus {
+  not_started
+  in_progress
+  completed
+  on_hold
+}
+
 enum Provider {
   pco
   rock
@@ -41,6 +48,8 @@ model Person {
   leaders     Leader[]
   assignments Assignment[]
   feedback    Feedback[]   @relation("CreatedBy")
+  objectivesCreated  Objective[] @relation("ObjectiveCreatedBy")
+  objectivesAssigned Objective[] @relation("ObjectiveAssignee")
 
   @@unique([remoteId, provider])
 }
@@ -64,6 +73,7 @@ model Team {
   provider      Provider
   serviceTypeId String?
   name          String
+  descriptionMarkdown String?
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
   serviceType   ServiceType? @relation(fields: [serviceTypeId], references: [id], onDelete: SetNull)
@@ -80,10 +90,12 @@ model Position {
   provider    Provider
   teamId      String
   name        String?
+  descriptionMarkdown String?
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   team        Team         @relation(fields: [teamId], references: [id], onDelete: Cascade)
   assignments Assignment[]
+  objectives  Objective[]
 
   @@unique([remoteId, provider])
 }
@@ -138,4 +150,36 @@ model Feedback {
   updatedAt          DateTime       @updatedAt
   team               Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
   createdBy          Person         @relation("CreatedBy", fields: [personId], references: [id], onDelete: Cascade)
+}
+
+model Objective {
+  id                 String          @id @default(cuid())
+  positionId         String
+  createdByPersonId  String
+  assigneePersonId   String?
+  title              String
+  descriptionMarkdown String?
+  status             ObjectiveStatus @default(not_started)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  position           Position        @relation(fields: [positionId], references: [id], onDelete: Cascade)
+  createdBy          Person          @relation("ObjectiveCreatedBy", fields: [createdByPersonId], references: [id], onDelete: Cascade)
+  assignee           Person?         @relation("ObjectiveAssignee", fields: [assigneePersonId], references: [id], onDelete: SetNull)
+  keyResults         KeyResult[]
+
+  @@index([positionId])
+  @@index([assigneePersonId])
+}
+
+model KeyResult {
+  id                 String    @id @default(cuid())
+  objectiveId        String
+  title              String
+  descriptionMarkdown String?
+  progress           Int       @default(0)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  objective          Objective @relation(fields: [objectiveId], references: [id], onDelete: Cascade)
+
+  @@index([objectiveId])
 }

@@ -29,6 +29,8 @@ export default async function TeamDashboardPage({
     select: {
       id: true,
       name: true,
+      serviceTypeId: true,
+      descriptionMarkdown: true,
       leaders: {
         include: {
           person: {
@@ -57,8 +59,20 @@ export default async function TeamDashboardPage({
   const isMember = team.positions.some((position) =>
     position.assignments.some((assignment) => assignment.personId === person.id)
   )
+  const isEligibleDriver =
+    Boolean(team.serviceTypeId) &&
+    Boolean(
+      await prisma.driver.findUnique({
+        where: {
+          personId_serviceTypeId: {
+            personId: person.id,
+            serviceTypeId: team.serviceTypeId ?? "",
+          },
+        },
+      })
+    )
 
-  if (!isLeader && !isMember) notFound()
+  if (!isLeader && !isMember && !isEligibleDriver) notFound()
 
   const sinceDate = new Date()
   sinceDate.setDate(sinceDate.getDate() - DEFAULT_DAYS)
@@ -73,28 +87,40 @@ export default async function TeamDashboardPage({
         orderBy: { createdAt: "desc" },
         take: 50,
       })
-    : await prisma.feedback.findMany({
-        where: {
-          teamId: team.id,
-          status: "accepted",
-          acceptedAt: {
-            gte: sinceDate,
-          },
-        },
-        include: {
-          team: { select: { id: true, name: true } },
-          createdBy: { select: { fullName: true, email: true } },
-        },
-        orderBy: { acceptedAt: "desc" },
-        take: 50,
-      })
-
-  const serializedFeedback = initialFeedback.map((item) => ({
-    ...item,
-    createdAt: item.createdAt.toISOString(),
-    acceptedAt: item.acceptedAt?.toISOString() ?? null,
-    reviewedByDriverAt: item.reviewedByDriverAt?.toISOString() ?? null,
-  }))
+    : (
+        await Promise.all([
+          prisma.feedback.findMany({
+            where: {
+              teamId: team.id,
+              status: "accepted",
+              acceptedAt: {
+                gte: sinceDate,
+              },
+            },
+            include: {
+              team: { select: { id: true, name: true } },
+              createdBy: { select: { fullName: true, email: true } },
+            },
+            orderBy: { acceptedAt: "desc" },
+            take: 50,
+          }),
+          prisma.feedback.findMany({
+            where: {
+              teamId: team.id,
+              personId: person.id,
+              status: {
+                in: ["pending_driver_review", "pending_leader_review"],
+              },
+            },
+            include: {
+              team: { select: { id: true, name: true } },
+              createdBy: { select: { fullName: true, email: true } },
+            },
+            orderBy: { createdAt: "desc" },
+            take: 50,
+          }),
+        ])
+      ).flat()
 
   const roster = {
     leaders: team.leaders
@@ -107,6 +133,7 @@ export default async function TeamDashboardPage({
     positions: team.positions.map((position) => ({
       id: position.id,
       name: position.name?.trim() || "Team Member",
+      descriptionMarkdown: position.descriptionMarkdown,
       members: position.assignments
         .map((assignment) => ({
           id: assignment.person.id,
@@ -116,6 +143,10 @@ export default async function TeamDashboardPage({
         .sort((a, b) => a.fullName.localeCompare(b.fullName)),
     })),
   }
+
+  const dedupedFeedback = Array.from(
+    new Map(initialFeedback.map((item) => [item.id, item])).values()
+  ).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
 
   return (
     <div className="min-h-screen">
@@ -143,14 +174,23 @@ export default async function TeamDashboardPage({
         <p className="changelog-page-subtitle">
           {isLeader
             ? "You are a leader for this team. You can review, edit, and manage visibility."
-            : `Showing accepted feedback from the last ${DEFAULT_DAYS} days first.`}
+            : `Showing accepted feedback from the last ${DEFAULT_DAYS} days first, plus your pending submissions.`}
         </p>
         <TeamDashboardClient
           teamId={team.id}
+          currentPersonId={person.id}
           isLeader={isLeader}
           defaultDays={DEFAULT_DAYS}
+          canEditContent={isLeader || isEligibleDriver}
+          canEditGoals={isLeader || isMember || isEligibleDriver}
+          teamDescriptionMarkdown={team.descriptionMarkdown}
           roster={roster}
-          initialFeedback={serializedFeedback}
+          initialFeedback={dedupedFeedback.map((item) => ({
+            ...item,
+            createdAt: item.createdAt.toISOString(),
+            acceptedAt: item.acceptedAt?.toISOString() ?? null,
+            reviewedByDriverAt: item.reviewedByDriverAt?.toISOString() ?? null,
+          }))}
         />
       </main>
     </div>

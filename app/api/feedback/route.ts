@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/db"
+import { canViewTeam as canViewTeamPermission } from "@/lib/permissions"
 import { getOrCreatePersonByPcoId } from "@/lib/person"
 
 export async function GET(req: Request) {
@@ -20,27 +21,8 @@ export async function GET(req: Request) {
   const teamId = searchParams.get("teamId")
   const since = searchParams.get("since")
   const before = searchParams.get("before")
+  const includePendingMine = searchParams.get("includePendingMine") === "true"
   const limit = Math.min(Number(searchParams.get("limit")) || 50, 100)
-
-  const canViewTeam = async (id: string) => {
-    const [leader, assignment] = await Promise.all([
-      prisma.leader.findUnique({
-        where: {
-          personId_teamId: {
-            personId: person.id,
-            teamId: id,
-          },
-        },
-      }),
-      prisma.assignment.findFirst({
-        where: {
-          personId: person.id,
-          position: { teamId: id },
-        },
-      }),
-    ])
-    return Boolean(leader || assignment)
-  }
 
   if (role === "driver") {
     const driverServiceTypes = await prisma.driver.findMany({
@@ -121,9 +103,16 @@ export async function GET(req: Request) {
   }
 
   if (teamId != null || since != null || before != null) {
-    if (teamId && !(await canViewTeam(teamId))) {
+    if (teamId && !(await canViewTeamPermission(person.id, teamId))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
+    if (includePendingMine && !teamId) {
+      return NextResponse.json(
+        { error: "includePendingMine requires teamId" },
+        { status: 400 }
+      )
+    }
+
     const where: {
       status: "accepted"
       teamId?: string
@@ -139,6 +128,44 @@ export async function GET(req: Request) {
       if (sinceDate) where.acceptedAt.gte = sinceDate
       if (beforeDate) where.acceptedAt.lte = beforeDate
     }
+
+    if (includePendingMine && teamId) {
+      const [accepted, pendingMine] = await Promise.all([
+        prisma.feedback.findMany({
+          where,
+          include: {
+            team: { select: { id: true, name: true } },
+            createdBy: { select: { fullName: true, email: true } },
+          },
+          orderBy: { acceptedAt: "desc" },
+          take: limit,
+        }),
+        prisma.feedback.findMany({
+          where: {
+            teamId,
+            personId: person.id,
+            status: { in: ["pending_driver_review", "pending_leader_review"] },
+          },
+          include: {
+            team: { select: { id: true, name: true } },
+            createdBy: { select: { fullName: true, email: true } },
+          },
+          orderBy: { createdAt: "desc" },
+          take: limit,
+        }),
+      ])
+
+      const merged = Array.from(
+        new Map(
+          [...pendingMine, ...accepted].map((item) => [item.id, item])
+        ).values()
+      )
+        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+        .slice(0, limit)
+
+      return NextResponse.json(merged)
+    }
+
     const list = await prisma.feedback.findMany({
       where,
       include: {
