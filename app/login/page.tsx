@@ -12,7 +12,9 @@ export default async function LoginPage() {
     <div className="flex min-h-screen items-center justify-center px-4">
       <div className="changelog-card w-full max-w-sm space-y-6 p-8">
         <div className="text-center">
-          <h1 className="changelog-page-title text-2xl">Changelog</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-church">
+            Changelog
+          </h1>
           <p className="changelog-page-subtitle mt-2">
             Sign in with Planning Center Online
           </p>

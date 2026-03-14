@@ -120,7 +120,7 @@ export default async function DashboardPage() {
         <div className="changelog-container flex h-14 items-center justify-between">
           <Link
             href="/dashboard"
-            className="font-semibold text-zinc-900 dark:text-zinc-100"
+            className="font-bold text-church text-lg tracking-tight hover:text-church-hover transition-colors"
           >
             Changelog
           </Link>
@@ -131,116 +131,85 @@ export default async function DashboardPage() {
       </header>
       <main className="changelog-container py-6">
         <div className="grid gap-0 lg:grid-cols-[260px_minmax(0,1fr)]">
-          <aside className="rounded-xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900 lg:sticky lg:top-20 lg:h-fit">
-            <p className="px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+          <aside className="changelog-card p-4 lg:sticky lg:top-20 lg:h-fit">
+            <p className="px-2 pb-2 text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
               Workspace
             </p>
             <nav className="space-y-1">
               <Link
                 href="/dashboard"
-                className="block rounded-lg bg-zinc-100 px-3 py-2 text-sm font-medium text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100"
+                className="changelog-nav-active block px-3 py-2.5 text-sm"
               >
                 Overview
               </Link>
-              <Link
-                href="/feedback/new"
-                className="block rounded-lg px-3 py-2 text-sm text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
-              >
-                Submit feedback
-              </Link>
-              <Link
-                href="/my-feedback"
-                className="block rounded-lg px-3 py-2 text-sm text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
-              >
-                Team feedback
-              </Link>
             </nav>
-            <div className="my-3 border-t border-zinc-200 dark:border-zinc-800" />
-            <p className="px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-              Reviews
-            </p>
-            <nav className="space-y-1">
-              <Link
-                href="/driver"
-                className="block rounded-lg px-3 py-2 text-sm text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
-              >
-                Driver
-              </Link>
-              <Link
-                href="/leader"
-                className="block rounded-lg px-3 py-2 text-sm text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
-              >
-                Team Leader
-              </Link>
-            </nav>
+            {teamsWithRoles.length > 0 && (
+              <>
+                <div className="my-3 border-t border-zinc-200 dark:border-zinc-800" />
+                {groupedTeams.map((group) => (
+                  <div key={group.serviceTypeName} className="mt-3 first:mt-0">
+                    <p className="px-2 pb-1.5 text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                      {group.serviceTypeName}
+                    </p>
+                    <ul className="space-y-0.5">
+                      {group.teams.map((team) => (
+                        <li key={team.id}>
+                          <Link
+                            href={`/teams/${team.id}`}
+                            className="block rounded-md px-3 py-2 text-sm text-zinc-600 transition-colors hover:bg-church-muted/50 hover:text-church dark:text-zinc-300 dark:hover:bg-church-muted/30 dark:hover:text-church"
+                          >
+                            {team.name}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+                {teamsWithoutServiceType.length > 0 && (
+                  <div className="mt-3">
+                    <p className="px-2 pb-1.5 text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                      No Service Type
+                    </p>
+                    <ul className="space-y-0.5">
+                      {teamsWithoutServiceType.map((team) => (
+                        <li key={team.id}>
+                          <Link
+                            href={`/teams/${team.id}`}
+                            className="block rounded-md px-3 py-2 text-sm text-zinc-600 transition-colors hover:bg-church-muted/50 hover:text-church dark:text-zinc-300 dark:hover:bg-church-muted/30 dark:hover:text-church"
+                          >
+                            {team.name}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </>
+            )}
           </aside>
 
           <section className="mt-4 lg:mt-0 lg:pl-6">
-            <div className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
-              <h1 className="changelog-page-title">Dashboard</h1>
-              <p className="changelog-page-subtitle">
-                Open a team, review updates, and keep feedback flowing.
-              </p>
-            </div>
-
-            <div className="mt-6 rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
-              <h2 className="changelog-section-title">My Teams</h2>
-              {teamsWithRoles.length === 0 ? (
-                <p className="mt-3 text-sm text-zinc-500 dark:text-zinc-400">
-                  You are not currently assigned to any teams.
+            <h1 className="changelog-page-title">Overview</h1>
+            <p className="changelog-page-subtitle">
+              Your workspace at a glance.
+            </p>
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              <div className="rounded-lg border border-zinc-200/80 bg-zinc-50/80 p-4 dark:border-zinc-700 dark:bg-zinc-800/50">
+                <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
+                  Reviews awaiting you
                 </p>
-              ) : (
-                <div className="mt-4 space-y-6">
-                  {groupedTeams.map((group) => (
-                    <div key={group.serviceTypeName}>
-                      <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
-                        {group.serviceTypeName}
-                      </h3>
-                      <ul className="mt-2 space-y-2">
-                        {group.teams.map((team) => (
-                          <li key={team.id}>
-                            <Link
-                              href={`/teams/${team.id}`}
-                              className="changelog-card-hover block p-4"
-                            >
-                              <p className="font-medium text-zinc-900 dark:text-zinc-100">
-                                {team.name}
-                              </p>
-                              <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                                {team.roles.join(" · ")}
-                              </p>
-                            </Link>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
-                  {teamsWithoutServiceType.length > 0 && (
-                    <div>
-                      <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
-                        No Service Type
-                      </h3>
-                      <ul className="mt-2 space-y-2">
-                        {teamsWithoutServiceType.map((team) => (
-                          <li key={team.id}>
-                            <Link
-                              href={`/teams/${team.id}`}
-                              className="changelog-card-hover block p-4"
-                            >
-                              <p className="font-medium text-zinc-900 dark:text-zinc-100">
-                                {team.name}
-                              </p>
-                              <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                                {team.roles.join(" · ")}
-                              </p>
-                            </Link>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              )}
+                <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+                  —
+                </p>
+              </div>
+              <div className="rounded-lg border border-zinc-200/80 bg-zinc-50/80 p-4 dark:border-zinc-700 dark:bg-zinc-800/50">
+                <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
+                  Goals to check
+                </p>
+                <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+                  —
+                </p>
+              </div>
             </div>
           </section>
         </div>

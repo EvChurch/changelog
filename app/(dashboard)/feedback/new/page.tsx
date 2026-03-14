@@ -15,7 +15,7 @@ export default async function NewFeedbackPage() {
         <div className="changelog-container flex h-14 items-center justify-between">
           <Link
             href="/dashboard"
-            className="font-semibold text-zinc-900 dark:text-zinc-100"
+            className="font-bold text-church text-lg tracking-tight hover:text-church-hover transition-colors"
           >
             Changelog
           </Link>

@@ -77,7 +77,7 @@ export default async function TeamLayout({
         <div className="changelog-container flex h-14 items-center justify-between">
           <Link
             href="/dashboard"
-            className="font-semibold text-zinc-900 dark:text-zinc-100"
+            className="font-bold text-church text-lg tracking-tight hover:text-church-hover transition-colors"
           >
             Changelog
           </Link>
@@ -89,7 +89,7 @@ export default async function TeamLayout({
       <main className="changelog-container py-8">
         <Link
           href="/dashboard"
-          className="text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+          className="text-sm font-medium text-zinc-500 hover:text-church transition-colors dark:hover:text-church"
         >
           ← Back to dashboard
         </Link>
