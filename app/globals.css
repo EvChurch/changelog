@@ -2,6 +2,7 @@
 @import "../vendor/tiptap/styles/_keyframe-animations.scss";
 
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 :root {
   --background: #f8f9fa;
@@ -15,18 +16,16 @@
   --ring: #374151;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0f0f11;
-    --foreground: #f4f4f5;
-    --card: #18181b;
-    --card-border: #27272a;
-    --muted: #a1a1aa;
-    --church: #e83d42;
-    --church-hover: #f05257;
-    --church-muted: #2a1516;
-    --ring: #71717a;
-  }
+.dark {
+  --background: #0f0f11;
+  --foreground: #f4f4f5;
+  --card: #18181b;
+  --card-border: #27272a;
+  --muted: #a1a1aa;
+  --church: #e83d42;
+  --church-hover: #f05257;
+  --church-muted: #2a1516;
+  --ring: #71717a;
 }
 
 @theme inline {

@@ -34,7 +34,6 @@ import { HorizontalRule } from "@/vendor/tiptap/components/tiptap-node/horizonta
 import { ImageUploadNode } from "@/vendor/tiptap/components/tiptap-node/image-upload-node/image-upload-node-extension"
 import defaultContent from "@/vendor/tiptap/components/tiptap-templates/simple/data/content.json"
 // --- Components ---
-import { ThemeToggle } from "@/vendor/tiptap/components/tiptap-templates/simple/theme-toggle"
 import { BlockquoteButton } from "@/vendor/tiptap/components/tiptap-ui/blockquote-button"
 import { CodeBlockButton } from "@/vendor/tiptap/components/tiptap-ui/code-block-button"
 import {
@@ -141,12 +140,6 @@ const MainToolbarContent = ({
       </ToolbarGroup>
 
       <Spacer />
-
-      {isMobile && <ToolbarSeparator />}
-
-      <ToolbarGroup>
-        <ThemeToggle />
-      </ToolbarGroup>
     </>
   )
 }

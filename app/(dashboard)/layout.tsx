@@ -2,6 +2,7 @@ import Link from "next/link"
 import { redirect } from "next/navigation"
 import { getServerSession } from "next-auth"
 
+import ThemeToggle from "@/components/theme-toggle"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { getOrCreatePersonByPcoId } from "@/lib/person"
@@ -110,9 +111,12 @@ export default async function DashboardLayout({
           >
             Changelog
           </Link>
-          <span className="text-sm text-zinc-500 dark:text-zinc-400">
-            {session.user.email}
-          </span>
+          <div className="flex items-center gap-3">
+            <ThemeToggle />
+            <span className="text-sm text-zinc-500 dark:text-zinc-400">
+              {session.user.email}
+            </span>
+          </div>
         </div>
       </header>
       <div className="flex flex-1 min-h-0 min-h-[calc(100vh-3.5rem)]">

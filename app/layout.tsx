@@ -20,13 +20,35 @@ export const metadata: Metadata = {
   description: "Service feedback for teams",
 }
 
+const themeInitScript = `(function () {
+  try {
+    var storedTheme = window.localStorage.getItem("theme");
+    var resolvedTheme =
+      storedTheme === "light" || storedTheme === "dark"
+        ? storedTheme
+        : (window.matchMedia &&
+            window.matchMedia("(prefers-color-scheme: dark)").matches)
+          ? "dark"
+          : "light";
+    document.documentElement.classList.toggle("dark", resolvedTheme === "dark");
+  } catch {
+    document.documentElement.classList.remove("dark");
+  }
+})();`
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{ __html: themeInitScript }}
+          suppressHydrationWarning
+        />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased bg-background text-foreground`}
       >
