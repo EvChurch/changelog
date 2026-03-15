@@ -14,7 +14,13 @@ const eslintConfig = defineConfig([
       "simple-import-sort/exports": "error",
     },
   },
-  globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts"]),
+  globalIgnores([
+    ".next/**",
+    "out/**",
+    "build/**",
+    "next-env.d.ts",
+    "vendor/tiptap/**",
+  ]),
   eslintConfigPrettier,
 ])
 

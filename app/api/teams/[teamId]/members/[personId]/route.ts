@@ -68,23 +68,53 @@ export async function GET(
   const [otherLeaderTeams, otherAssignedTeams] = await Promise.all([
     prisma.leader.findMany({
       where: { personId, teamId: { not: teamId } },
-      select: { team: { select: { id: true, name: true } } },
+      select: {
+        team: {
+          select: {
+            id: true,
+            name: true,
+            serviceType: { select: { id: true, name: true } },
+          },
+        },
+      },
     }),
     prisma.assignment.findMany({
       where: { personId, position: { teamId: { not: teamId } } },
       select: {
-        position: { select: { team: { select: { id: true, name: true } } } },
+        position: {
+          select: {
+            team: {
+              select: {
+                id: true,
+                name: true,
+                serviceType: { select: { id: true, name: true } },
+              },
+            },
+          },
+        },
       },
     }),
   ])
 
-  const teamsMap = new Map<string, { id: string; name: string }>()
+  const teamsMap = new Map<
+    string,
+    { id: string; name: string; serviceTypeName: string | null }
+  >()
   for (const leaderTeam of otherLeaderTeams) {
-    teamsMap.set(leaderTeam.team.id, leaderTeam.team)
+    const t = leaderTeam.team
+    teamsMap.set(t.id, {
+      id: t.id,
+      name: t.name,
+      serviceTypeName: t.serviceType?.name ?? null,
+    })
   }
   for (const assignment of otherAssignedTeams) {
-    const team = assignment.position.team
-    teamsMap.set(team.id, team)
+    const t = assignment.position.team
+    teamsMap.set(t.id, {
+      id: t.id,
+      name: t.name,
+      serviceTypeName: t.serviceType?.name ?? null,
+    })
   }
 
   const teamRoles = {

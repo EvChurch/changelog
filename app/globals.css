@@ -1,3 +1,6 @@
+@import "../vendor/tiptap/styles/_variables.scss";
+@import "../vendor/tiptap/styles/_keyframe-animations.scss";
+
 @import "tailwindcss";
 
 :root {
@@ -95,4 +98,65 @@ body {
 
 .changelog-nav-active {
   @apply rounded-md bg-church/10 font-semibold text-church border border-church/20 dark:bg-church/15 dark:border-church/30;
+}
+
+.changelog-nav-inactive {
+  @apply border border-transparent;
+}
+
+/* Tiptap read-only: no box, just content */
+.changelog-tiptap-readonly .ProseMirror {
+  position: relative;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  white-space: break-spaces;
+  outline: none;
+}
+.changelog-tiptap-readonly .ProseMirror p:first-child {
+  margin-top: 0;
+}
+.changelog-tiptap-readonly .ProseMirror p:last-child {
+  margin-bottom: 0;
+}
+
+/* Tiptap editable: no box, min-height and focus ring only */
+.changelog-tiptap-editor .ProseMirror {
+  position: relative;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  white-space: break-spaces;
+  outline: none;
+  min-height: 8rem;
+}
+.changelog-tiptap-editor .ProseMirror:focus {
+  outline: none;
+}
+.changelog-tiptap-editor .ProseMirror p:first-child {
+  margin-top: 0;
+}
+.changelog-tiptap-editor .ProseMirror p:last-child {
+  margin-bottom: 0;
+}
+.changelog-tiptap-editor .ProseMirror-gapcursor {
+  display: none;
+  pointer-events: none;
+  position: absolute;
+  margin: 0;
+}
+.changelog-tiptap-editor .ProseMirror-focused .ProseMirror-gapcursor {
+  display: block;
+}
+.changelog-tiptap-editor .ProseMirror-gapcursor:after {
+  content: "";
+  display: block;
+  position: absolute;
+  top: -2px;
+  width: 20px;
+  border-top: 1px solid var(--foreground);
+  animation: ProseMirror-cursor-blink 1.1s steps(2, start) infinite;
+}
+@keyframes ProseMirror-cursor-blink {
+  to {
+    visibility: hidden;
+  }
 }

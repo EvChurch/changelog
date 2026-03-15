@@ -21,35 +21,18 @@ export default async function DriverNewPage() {
   if (!isDriver) redirect("/driver")
 
   return (
-    <div className="min-h-screen">
-      <header className="changelog-header">
-        <div className="changelog-container flex h-14 items-center justify-between">
-          <Link
-            href="/driver"
-            className="font-bold text-church text-lg tracking-tight hover:text-church-hover transition-colors"
-          >
-            Changelog
-          </Link>
-          <span className="text-sm text-zinc-500 dark:text-zinc-400">
-            {session.user.email}
-          </span>
-        </div>
-      </header>
-      <main className="changelog-container py-8">
-        <Link
-          href="/driver"
-          className="text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
-        >
-          ← Back to driver
-        </Link>
-        <h1 className="changelog-page-title mt-4">
-          Create feedback (as driver)
-        </h1>
-        <p className="changelog-page-subtitle">
-          This will go straight to the team leader for review.
-        </p>
-        <DriverFeedbackForm />
-      </main>
-    </div>
+    <>
+      <Link
+        href="/driver"
+        className="text-sm font-medium text-zinc-500 hover:text-church transition-colors dark:hover:text-church"
+      >
+        ← Back to driver
+      </Link>
+      <h1 className="changelog-page-title mt-4">Create feedback (as driver)</h1>
+      <p className="changelog-page-subtitle">
+        This will go straight to the team leader for review.
+      </p>
+      <DriverFeedbackForm />
+    </>
   )
 }

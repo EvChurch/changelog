@@ -1,4 +1,3 @@
-import Link from "next/link"
 import { redirect } from "next/navigation"
 import { getServerSession } from "next-auth"
 
@@ -39,32 +38,17 @@ export default async function MyFeedbackPage() {
   }))
 
   return (
-    <div className="min-h-screen">
-      <header className="changelog-header">
-        <div className="changelog-container flex h-14 items-center justify-between">
-          <Link
-            href="/dashboard"
-            className="font-bold text-church text-lg tracking-tight hover:text-church-hover transition-colors"
-          >
-            Changelog
-          </Link>
-          <span className="text-sm text-zinc-500 dark:text-zinc-400">
-            {session.user.email}
-          </span>
-        </div>
-      </header>
-      <main className="changelog-container py-8">
-        <h1 className="changelog-page-title">My team feedback</h1>
-        <p className="changelog-page-subtitle">
-          Accepted feedback for the last {DEFAULT_DAYS} days. Use “Load older”
-          to see more.
-        </p>
-        <MyFeedbackClient
-          initialTeams={teams}
-          initialFeedback={serialized}
-          defaultDays={DEFAULT_DAYS}
-        />
-      </main>
-    </div>
+    <>
+      <h1 className="changelog-page-title">My team feedback</h1>
+      <p className="changelog-page-subtitle">
+        Accepted feedback for the last {DEFAULT_DAYS} days. Use “Load older” to
+        see more.
+      </p>
+      <MyFeedbackClient
+        initialTeams={teams}
+        initialFeedback={serialized}
+        defaultDays={DEFAULT_DAYS}
+      />
+    </>
   )
 }

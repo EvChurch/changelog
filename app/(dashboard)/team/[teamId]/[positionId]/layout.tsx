@@ -1,12 +1,9 @@
-import Link from "next/link"
 import { notFound, redirect } from "next/navigation"
 import { getServerSession } from "next-auth"
 
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { getOrCreatePersonByPcoId } from "@/lib/person"
-
-import PositionNav from "./position-nav"
 
 export default async function PositionLayout({
   params,
@@ -30,7 +27,6 @@ export default async function PositionLayout({
       id: true,
       name: true,
       teamId: true,
-      team: { select: { id: true, name: true } },
     },
   })
 
@@ -69,33 +65,9 @@ export default async function PositionLayout({
   const positionName = position.name?.trim() || "Team Member"
 
   return (
-    <div className="min-h-screen">
-      <header className="changelog-header">
-        <div className="changelog-container flex h-14 items-center justify-between">
-          <Link
-            href="/dashboard"
-            className="font-bold text-church text-lg tracking-tight hover:text-church-hover transition-colors"
-          >
-            Changelog
-          </Link>
-          <span className="text-sm text-zinc-500 dark:text-zinc-400">
-            {session.user.email}
-          </span>
-        </div>
-      </header>
-      <main className="changelog-container py-8">
-        <Link
-          href={`/teams/${teamId}`}
-          className="text-sm font-medium text-zinc-500 hover:text-church transition-colors dark:hover:text-church"
-        >
-          ← Back to {position.team.name}
-        </Link>
-        <h1 className="changelog-page-title mt-3">{positionName}</h1>
-
-        <PositionNav teamId={teamId} positionId={positionId} />
-
-        <div className="mt-8">{children}</div>
-      </main>
-    </div>
+    <>
+      <h1 className="changelog-page-title">{positionName}</h1>
+      <div className="mt-6">{children}</div>
+    </>
   )
 }

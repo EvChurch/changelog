@@ -68,14 +68,14 @@ model ServiceType {
 }
 
 model Team {
-  id            String       @id @default(cuid())
-  remoteId      String
-  provider      Provider
+  id          String   @id @default(cuid())
+  remoteId    String
+  provider    Provider
   serviceTypeId String?
-  name          String
-  descriptionMarkdown String?
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  name        String
+  description Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
   serviceType   ServiceType? @relation(fields: [serviceTypeId], references: [id], onDelete: SetNull)
   leaders       Leader[]
   positions     Position[]
@@ -85,14 +85,14 @@ model Team {
 }
 
 model Position {
-  id          String       @id @default(cuid())
-  remoteId    String
-  provider    Provider
-  teamId      String
-  name        String?
-  descriptionMarkdown String?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id          String   @id @default(cuid())
+  remoteId   String
+  provider   Provider
+  teamId     String
+  name       String?
+  description Json?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
   team        Team         @relation(fields: [teamId], references: [id], onDelete: Cascade)
   assignments Assignment[]
   objectives  Objective[]
