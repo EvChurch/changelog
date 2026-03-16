@@ -2,7 +2,7 @@ import { getServerSession, type Session } from "next-auth"
 
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/db"
-import { getOrCreatePersonByPcoId } from "@/lib/person"
+import { getOrCreatePersonByPcoId } from "@/lib/graphql/person"
 
 export type GraphQLContext = {
   session: Session | null

@@ -49,39 +49,3 @@ export async function getOrCreatePersonByPcoId(
     },
   })
 }
-
-export async function getOrCreateServiceTypeByPcoId(id: string, name: string) {
-  return prisma.serviceType.upsert({
-    where: { remoteId_provider: { remoteId: id, provider: "pco" } },
-    create: { remoteId: id, provider: "pco", name },
-    update: { name },
-  })
-}
-
-export async function getOrCreateTeamByPcoId(
-  id: string,
-  name: string,
-  serviceTypeId?: string | null
-) {
-  return prisma.team.upsert({
-    where: { remoteId_provider: { remoteId: id, provider: "pco" } },
-    create: {
-      remoteId: id,
-      provider: "pco",
-      name,
-      serviceTypeId: serviceTypeId ?? null,
-    },
-    update: { name, serviceTypeId: serviceTypeId ?? null },
-  })
-}
-
-export async function getOrCreateDefaultPosition(teamId: string) {
-  const remoteId = `${teamId}:member`
-  return prisma.position.upsert({
-    where: { remoteId_provider: { remoteId, provider: "pco" } },
-    create: { remoteId, provider: "pco", teamId, name: "Member" },
-    update: {},
-  })
-}
-
-export const getOrCreateDefaultTeamPosition = getOrCreateDefaultPosition

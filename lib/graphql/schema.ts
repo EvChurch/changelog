@@ -13,7 +13,7 @@ import {
   isPersonInTeam,
   leaderOrDriverWrite,
   memberOrDriverWrite,
-} from "@/lib/permissions"
+} from "@/lib/graphql/permissions"
 
 import type { GraphQLContext } from "./context"
 import { prisma } from "./context"
