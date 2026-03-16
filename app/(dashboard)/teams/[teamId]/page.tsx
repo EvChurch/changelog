@@ -2,8 +2,8 @@ import { notFound, redirect } from "next/navigation"
 import { getServerSession } from "next-auth"
 
 import { authOptions } from "@/lib/auth"
-import { prisma } from "@/lib/db"
-import { getOrCreatePersonByPcoId } from "@/lib/person"
+import { getServerApolloClient } from "@/lib/graphql/apollo-rsc"
+import { TeamContentQuery, WorkspaceTeamsQuery } from "@/lib/graphql/operations"
 
 import TeamOverviewClient from "./team-overview-client"
 
@@ -16,48 +16,25 @@ export default async function TeamOverviewPage({
   if (!session) redirect("/login")
 
   const { teamId } = await params
-  const person = await getOrCreatePersonByPcoId(session.user.id, {
-    email: session.user.email ?? undefined,
-    fullName: session.user.name ?? undefined,
-  })
-
-  const team = await prisma.team.findUnique({
-    where: { id: teamId },
-    select: {
-      id: true,
-      name: true,
-      descriptionMarkdown: true,
-      serviceTypeId: true,
-      leaders: { select: { personId: true } },
-      positions: {
-        select: {
-          assignments: { select: { personId: true } },
-        },
-      },
-    },
-  })
-
+  const apollo = await getServerApolloClient()
+  const [contentResult, teamsResult] = await Promise.all([
+    apollo.query({
+      query: TeamContentQuery,
+      variables: { teamId },
+      fetchPolicy: "no-cache",
+    }),
+    apollo.query({
+      query: WorkspaceTeamsQuery,
+      fetchPolicy: "no-cache",
+    }),
+  ])
+  const team = contentResult.data?.teamContent
   if (!team) notFound()
-
-  const isLeader = team.leaders.some((l) => l.personId === person.id)
-  const isMember = team.positions.some((position) =>
-    position.assignments.some((a) => a.personId === person.id)
+  const workspaceTeam =
+    teamsResult.data?.workspaceTeams?.find((item) => item.id === teamId) ?? null
+  const canEditContent = Boolean(
+    workspaceTeam?.isLeader || workspaceTeam?.isEligibleDriver
   )
-  const isEligibleDriver = Boolean(
-    team.serviceTypeId &&
-    (await prisma.driver.findUnique({
-      where: {
-        personId_serviceTypeId: {
-          personId: person.id,
-          serviceTypeId: team.serviceTypeId ?? "",
-        },
-      },
-    }))
-  )
-
-  if (!isLeader && !isMember && !isEligibleDriver) notFound()
-
-  const canEditContent = isLeader || isEligibleDriver
 
   return (
     <TeamOverviewClient

@@ -2,8 +2,8 @@ import { notFound, redirect } from "next/navigation"
 import { getServerSession } from "next-auth"
 
 import { authOptions } from "@/lib/auth"
-import { prisma } from "@/lib/db"
-import { getOrCreatePersonByPcoId } from "@/lib/person"
+import { getServerApolloClient } from "@/lib/graphql/apollo-rsc"
+import { TeamQuery } from "@/lib/graphql/operations"
 
 export default async function TeamLayout({
   params,
@@ -16,46 +16,14 @@ export default async function TeamLayout({
   if (!session) redirect("/login")
 
   const { teamId } = await params
-  const person = await getOrCreatePersonByPcoId(session.user.id, {
-    email: session.user.email ?? undefined,
-    fullName: session.user.name ?? undefined,
+  const apollo = await getServerApolloClient()
+  const result = await apollo.query({
+    query: TeamQuery,
+    variables: { teamId },
+    fetchPolicy: "no-cache",
   })
-
-  const team = await prisma.team.findUnique({
-    where: { id: teamId },
-    select: {
-      id: true,
-      name: true,
-      serviceTypeId: true,
-      leaders: { select: { personId: true } },
-      positions: {
-        select: {
-          id: true,
-          assignments: { select: { personId: true } },
-        },
-      },
-    },
-  })
-
+  const team = result.data?.team
   if (!team) notFound()
-
-  const isLeader = team.leaders.some((l) => l.personId === person.id)
-  const isMember = team.positions.some((position) =>
-    position.assignments.some((a) => a.personId === person.id)
-  )
-  const isEligibleDriver = Boolean(
-    team.serviceTypeId &&
-    (await prisma.driver.findUnique({
-      where: {
-        personId_serviceTypeId: {
-          personId: person.id,
-          serviceTypeId: team.serviceTypeId ?? "",
-        },
-      },
-    }))
-  )
-
-  if (!isLeader && !isMember && !isEligibleDriver) notFound()
 
   return (
     <>

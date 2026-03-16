@@ -3,38 +3,28 @@ import { redirect } from "next/navigation"
 import { getServerSession } from "next-auth"
 
 import { authOptions } from "@/lib/auth"
-import { prisma } from "@/lib/db"
-import { getOrCreatePersonByPcoId } from "@/lib/person"
+import { getServerApolloClient } from "@/lib/graphql/apollo-rsc"
+import {
+  FeedbackListQuery,
+  ViewerRoleSummaryQuery,
+} from "@/lib/graphql/operations"
 
 export default async function DriverPage() {
   const session = await getServerSession(authOptions)
   if (!session) redirect("/login")
-  const person = await getOrCreatePersonByPcoId(session.user.id, {
-    email: session.user.email,
-    fullName: session.user.name,
-  })
-  const driverServiceTypes = await prisma.driver.findMany({
-    where: { personId: person.id },
-    select: { serviceTypeId: true },
-  })
-  const serviceTypeIds = driverServiceTypes.map(
-    (driver) => driver.serviceTypeId
-  )
-  const isDriver = serviceTypeIds.length > 0
-
-  const pendingReview = isDriver
-    ? await prisma.feedback.findMany({
-        where: {
-          status: "pending_driver_review",
-          team: { serviceTypeId: { in: serviceTypeIds } },
-        },
-        include: {
-          team: { select: { name: true } },
-          createdBy: { select: { fullName: true, email: true } },
-        },
-        orderBy: { createdAt: "desc" },
+  const apollo = await getServerApolloClient()
+  const [roleResult, pendingResult] = await Promise.all([
+    apollo.query({ query: ViewerRoleSummaryQuery, fetchPolicy: "no-cache" }),
+    apollo
+      .query({
+        query: FeedbackListQuery,
+        variables: { input: { role: "driver", limit: 50 } },
+        fetchPolicy: "no-cache",
       })
-    : []
+      .catch(() => ({ data: { feedbackList: [] } })),
+  ])
+  const isDriver = Boolean(roleResult.data?.viewerRoleSummary?.isDriver)
+  const pendingReview = isDriver ? (pendingResult.data?.feedbackList ?? []) : []
 
   return (
     <>

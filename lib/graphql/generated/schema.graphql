@@ -1,0 +1,193 @@
+type Feedback {
+  acceptedAt: String
+  content: String!
+  createdAt: String!
+  createdBy: Person!
+  driverComment: String
+  id: String!
+  leaderComment: String
+  reviewedByDriverAt: String
+  source: FeedbackSource!
+  status: FeedbackStatus!
+  team: Team!
+}
+
+enum FeedbackAction {
+  driver_approve
+  driver_reject
+  leader_accept
+  leader_edit
+  leader_reject
+}
+
+input FeedbackListInput {
+  before: String
+  includePendingMine: Boolean
+  limit: Int
+  role: FeedbackListRole
+  since: String
+  teamId: String
+}
+
+enum FeedbackListRole {
+  driver
+  leader
+  team_leader
+}
+
+enum FeedbackSource {
+  driver
+  member
+}
+
+enum FeedbackStatus {
+  accepted
+  pending_driver_review
+  pending_leader_review
+}
+
+type KeyResult {
+  descriptionMarkdown: String
+  id: String!
+  progress: Int!
+  title: String!
+}
+
+type MemberDetail {
+  otherTeams: [OtherTeam!]!
+  person: Person!
+  teamRoles: TeamRoleInfo!
+}
+
+type Mutation {
+  createFeedback(asDriver: Boolean, content: String!, teamId: String!): Feedback!
+  createKeyResult(descriptionMarkdown: String, objectiveId: String!, progress: Int, title: String!): KeyResult!
+  createObjective(assigneePersonId: String, descriptionMarkdown: String, positionId: String!, status: ObjectiveStatus, title: String!): Objective!
+  deleteKeyResult(keyResultId: String!, objectiveId: String!): MutationOk!
+  deleteObjective(objectiveId: String!): MutationOk!
+  feedbackAction(action: FeedbackAction!, comment: String, content: String, id: String!): MutationOk!
+  updateKeyResult(descriptionMarkdown: String, keyResultId: String!, objectiveId: String!, progress: Int, title: String): KeyResult!
+  updateObjective(assigneePersonId: String, descriptionMarkdown: String, objectiveId: String!, status: ObjectiveStatus, title: String): Objective!
+  updatePositionContent(descriptionMarkdown: String, positionId: String!): Position!
+  updateTeamContent(descriptionMarkdown: String, teamId: String!): Team!
+}
+
+type MutationOk {
+  ok: Boolean!
+}
+
+type Objective {
+  assignee: Person
+  assigneePersonId: String
+  createdBy: Person!
+  descriptionMarkdown: String
+  id: String!
+  keyResults: [KeyResult!]!
+  status: ObjectiveStatus!
+  title: String!
+}
+
+enum ObjectiveStatus {
+  completed
+  in_progress
+  not_started
+  on_hold
+}
+
+type OtherTeam {
+  id: String!
+  name: String!
+  serviceTypeName: String
+}
+
+type Person {
+  email: String
+  fullName: String!
+  id: String!
+  image: String
+}
+
+type Position {
+  descriptionMarkdown: String
+  id: String!
+  name: String!
+  teamId: String
+}
+
+type PositionMembersPayload {
+  members: [SimpleMember!]!
+  positionId: String!
+  positionName: String!
+}
+
+type PositionObjectivesPayload {
+  objectives: [Objective!]!
+  position: Position!
+}
+
+type Query {
+  driverFeedback(id: String!): Feedback!
+  feedback(id: String!): Feedback!
+  feedbackList(input: FeedbackListInput!): [Feedback!]!
+  leaderFeedback(id: String!): Feedback!
+  positionContent(positionId: String!): Position!
+  positionMembers(positionId: String!, teamId: String!): PositionMembersPayload!
+  positionObjectives(positionId: String!): PositionObjectivesPayload!
+  team(teamId: String!): TeamWithPositions!
+  teamContent(teamId: String!): Team!
+  teamMember(personId: String!, teamId: String!): MemberDetail!
+  teamRoster(teamId: String!): TeamRoster!
+  teams: [Team!]!
+  viewerRoleSummary: ViewerRoleSummary!
+  workspaceTeams: [WorkspaceTeam!]!
+}
+
+type SimpleMember {
+  email: String
+  fullName: String!
+  id: String!
+}
+
+type Team {
+  descriptionMarkdown: String
+  id: String!
+  name: String!
+}
+
+type TeamPositionRoster {
+  id: String!
+  members: [SimpleMember!]!
+  name: String!
+}
+
+type TeamRoleInfo {
+  isLeader: Boolean!
+  positions: [String!]!
+}
+
+type TeamRoster {
+  leaders: [SimpleMember!]!
+  positions: [TeamPositionRoster!]!
+  teamId: String!
+}
+
+type TeamWithPositions {
+  id: String!
+  name: String!
+  positions: [Position!]!
+}
+
+type ViewerRoleSummary {
+  isDriver: Boolean!
+  isLeader: Boolean!
+}
+
+type WorkspaceTeam {
+  id: String!
+  isEligibleDriver: Boolean!
+  isLeader: Boolean!
+  isMember: Boolean!
+  name: String!
+  roles: [String!]!
+  serviceTypeName: String
+}

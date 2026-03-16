@@ -4,8 +4,8 @@ import { getServerSession } from "next-auth"
 
 import ThemeToggle from "@/components/theme-toggle"
 import { authOptions } from "@/lib/auth"
-import { prisma } from "@/lib/db"
-import { getOrCreatePersonByPcoId } from "@/lib/person"
+import { getServerApolloClient } from "@/lib/graphql/apollo-rsc"
+import { WorkspaceTeamsQuery } from "@/lib/graphql/operations"
 
 import WorkspaceSidebar from "./workspace-sidebar"
 
@@ -16,62 +16,12 @@ export default async function DashboardLayout({
 }) {
   const session = await getServerSession(authOptions)
   if (!session) redirect("/login")
-
-  const person = await getOrCreatePersonByPcoId(session.user.id, {
-    email: session.user.email ?? undefined,
-    fullName: session.user.name ?? undefined,
+  const apollo = await getServerApolloClient()
+  const result = await apollo.query({
+    query: WorkspaceTeamsQuery,
+    fetchPolicy: "no-cache",
   })
-
-  const teams = await prisma.team.findMany({
-    where: {
-      OR: [
-        { leaders: { some: { personId: person.id } } },
-        {
-          positions: {
-            some: { assignments: { some: { personId: person.id } } },
-          },
-        },
-      ],
-    },
-    select: {
-      id: true,
-      name: true,
-      serviceType: { select: { name: true } },
-      leaders: { where: { personId: person.id }, select: { personId: true } },
-      positions: {
-        select: {
-          name: true,
-          assignments: {
-            where: { personId: person.id },
-            select: { personId: true },
-          },
-        },
-      },
-    },
-  })
-
-  const teamsWithRoles = teams.map((team) => {
-    const roles: string[] = []
-    const isLeader = team.leaders.length > 0
-    const positionNames = Array.from(
-      new Set(
-        team.positions
-          .filter((p) => p.assignments.length > 0)
-          .map((p) => p.name?.trim())
-          .filter((name): name is string => Boolean(name))
-      )
-    )
-    const isMember = team.positions.some((p) => p.assignments.length > 0)
-    if (isLeader) roles.push("Team Leader")
-    roles.push(...positionNames.sort((a, b) => a.localeCompare(b)))
-    if (isMember && positionNames.length === 0) roles.push("Team Member")
-    return {
-      id: team.id,
-      name: team.name,
-      serviceTypeName: team.serviceType?.name ?? null,
-      roles,
-    }
-  })
+  const teamsWithRoles = result.data?.workspaceTeams ?? []
 
   const teamsByServiceType = new Map<
     string,

@@ -1,7 +1,11 @@
 "use client"
 
+import { useApolloClient } from "@apollo/client/react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
+
+import type { ResultOf } from "@/lib/graphql/gql"
+import { CreateFeedbackMutation, TeamsQuery } from "@/lib/graphql/operations"
 
 interface Team {
   id: string
@@ -9,6 +13,7 @@ interface Team {
 }
 
 export default function FeedbackForm() {
+  const apollo = useApolloClient()
   const router = useRouter()
   const [teams, setTeams] = useState<Team[]>([])
   const [loading, setLoading] = useState(true)
@@ -18,14 +23,23 @@ export default function FeedbackForm() {
   const [teamId, setTeamId] = useState("")
 
   useEffect(() => {
-    fetch("/api/teams")
-      .then((r) =>
-        r.ok ? r.json() : Promise.reject(new Error("Failed to load teams"))
-      )
-      .then(setTeams)
+    apollo
+      .query({ query: TeamsQuery, fetchPolicy: "no-cache" })
+      .then((result) => {
+        const data = result.data as ResultOf<typeof TeamsQuery> | null
+        if (!data?.teams) throw new Error("Failed to load teams")
+        setTeams(
+          data.teams
+            .filter(
+              (team): team is { id: string; name: string } =>
+                typeof team.id === "string" && typeof team.name === "string"
+            )
+            .map((team) => ({ id: team.id, name: team.name }))
+        )
+      })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
-  }, [])
+  }, [apollo])
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -33,17 +47,16 @@ export default function FeedbackForm() {
     setSubmitting(true)
     setError(null)
     try {
-      const res = await fetch("/api/feedback", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const result = await apollo.mutate({
+        mutation: CreateFeedbackMutation,
+        variables: {
           content: content.trim(),
           teamId,
           asDriver: false,
-        }),
+        },
       })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error ?? "Failed to submit")
+      const data = result.data as ResultOf<typeof CreateFeedbackMutation> | null
+      if (!data?.createFeedback?.id) throw new Error("Failed to submit")
       router.push("/dashboard")
       router.refresh()
     } catch (err) {

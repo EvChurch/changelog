@@ -3,8 +3,8 @@ import { notFound, redirect } from "next/navigation"
 import { getServerSession } from "next-auth"
 
 import { authOptions } from "@/lib/auth"
-import { prisma } from "@/lib/db"
-import { getOrCreatePersonByPcoId } from "@/lib/person"
+import { getServerApolloClient } from "@/lib/graphql/apollo-rsc"
+import { LeaderFeedbackQuery } from "@/lib/graphql/operations"
 
 import LeaderActions from "./leader-actions"
 
@@ -16,29 +16,16 @@ export default async function LeaderFeedbackPage({
   const session = await getServerSession(authOptions)
   if (!session) redirect("/login")
   const { id } = await params
-  const person = await getOrCreatePersonByPcoId(session.user.id, {
-    email: session.user.email,
-    fullName: session.user.name,
-  })
-  const isLeader = await prisma.leader.findFirst({
-    where: { personId: person.id },
-  })
-  if (!isLeader) redirect("/leader")
-
-  const feedback = await prisma.feedback.findUnique({
-    where: { id },
-    include: {
-      team: true,
-      createdBy: { select: { fullName: true, email: true } },
-    },
-  })
-  if (!feedback || feedback.status !== "pending_leader_review") notFound()
-  const canAct = await prisma.leader.findUnique({
-    where: {
-      personId_teamId: { personId: person.id, teamId: feedback.teamId },
-    },
-  })
-  if (!canAct) redirect("/leader")
+  const apollo = await getServerApolloClient()
+  const feedback = await apollo
+    .query({
+      query: LeaderFeedbackQuery,
+      variables: { id },
+      fetchPolicy: "no-cache",
+    })
+    .then((result) => result.data?.leaderFeedback ?? null)
+    .catch(() => null)
+  if (!feedback) notFound()
 
   return (
     <>

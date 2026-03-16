@@ -1,6 +1,10 @@
 "use client"
 
+import { useApolloClient } from "@apollo/client/react"
 import { useState } from "react"
+
+import type { ResultOf } from "@/lib/graphql/gql"
+import { FeedbackListQuery } from "@/lib/graphql/operations"
 
 interface Team {
   id: string
@@ -25,6 +29,7 @@ export default function MyFeedbackClient({
   initialFeedback: FeedbackItem[]
   defaultDays: number
 }) {
+  const apollo = useApolloClient()
   const [teamId, setTeamId] = useState<string>("")
   const [feedback, setFeedback] = useState<FeedbackItem[]>(initialFeedback)
   const [loadingOlder, setLoadingOlder] = useState(false)
@@ -39,14 +44,19 @@ export default function MyFeedbackClient({
     if (!oldestAccepted) return
     setLoadingOlder(true)
     try {
-      const params = new URLSearchParams({
-        before: oldestAccepted,
-        limit: "50",
+      const result = await apollo.query({
+        query: FeedbackListQuery,
+        variables: {
+          input: {
+            before: oldestAccepted,
+            limit: 50,
+            teamId: teamId || undefined,
+          },
+        },
+        fetchPolicy: "no-cache",
       })
-      if (teamId) params.set("teamId", teamId)
-      const res = await fetch(`/api/feedback?${params}`)
-      if (!res.ok) return
-      const older: FeedbackItem[] = await res.json()
+      const data = result.data as ResultOf<typeof FeedbackListQuery> | null
+      const older = data?.feedbackList ?? []
       setFeedback((prev) => [...prev, ...older])
       if (older.length > 0 && older[older.length - 1]?.acceptedAt) {
         setOldestAccepted(older[older.length - 1].acceptedAt)
@@ -61,14 +71,20 @@ export default function MyFeedbackClient({
   const refetch = async (tid: string) => {
     const since = new Date()
     since.setDate(since.getDate() - defaultDays)
-    const params = new URLSearchParams({
-      since: since.toISOString(),
-      limit: "50",
+    const result = await apollo.query({
+      query: FeedbackListQuery,
+      variables: {
+        input: {
+          since: since.toISOString(),
+          limit: 50,
+          teamId: tid || undefined,
+        },
+      },
+      fetchPolicy: "no-cache",
     })
-    if (tid) params.set("teamId", tid)
-    const res = await fetch(`/api/feedback?${params}`)
-    if (!res.ok) return
-    const data: FeedbackItem[] = await res.json()
+    const data =
+      (result.data as ResultOf<typeof FeedbackListQuery> | null)
+        ?.feedbackList ?? []
     setFeedback(data)
     setOldestAccepted(
       data.length > 0 && data[data.length - 1]?.acceptedAt

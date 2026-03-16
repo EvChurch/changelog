@@ -1,6 +1,13 @@
 "use client"
 
+import { useApolloClient } from "@apollo/client/react"
 import { useState } from "react"
+
+import type { ResultOf } from "@/lib/graphql/gql"
+import {
+  FeedbackActionMutation,
+  FeedbackListQuery,
+} from "@/lib/graphql/operations"
 
 type FeedbackStatus =
   | "pending_driver_review"
@@ -43,6 +50,7 @@ export default function TeamFeedbackClient({
   defaultDays: number
   initialFeedback: FeedbackItem[]
 }) {
+  const apollo = useApolloClient()
   const [feedback, setFeedback] = useState<FeedbackItem[]>(initialFeedback)
   const [loadingOlder, setLoadingOlder] = useState(false)
   const [loadingById, setLoadingById] = useState<Record<string, boolean>>({})
@@ -65,14 +73,16 @@ export default function TeamFeedbackClient({
   })
 
   const refreshLeaderList = async () => {
-    const params = new URLSearchParams({
-      role: "team_leader",
-      teamId,
-      limit: "50",
+    const result = await apollo.query({
+      query: FeedbackListQuery,
+      variables: {
+        input: { role: "team_leader", teamId, limit: 50 },
+      },
+      fetchPolicy: "no-cache",
     })
-    const res = await fetch(`/api/feedback?${params}`)
-    if (!res.ok) return
-    const latest: FeedbackItem[] = await res.json()
+    const latest =
+      (result.data as ResultOf<typeof FeedbackListQuery> | null)
+        ?.feedbackList ?? []
     setFeedback(latest)
     setDrafts((prev) => {
       const next = { ...prev }
@@ -114,12 +124,17 @@ export default function TeamFeedbackClient({
       if (action === "leader_edit") {
         payload.content = draft?.content
       }
-      const res = await fetch(`/api/feedback/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+      const result = await apollo.mutate({
+        mutation: FeedbackActionMutation,
+        variables: {
+          id,
+          action: payload.action,
+          comment: payload.comment,
+          content: payload.content,
+        },
       })
-      if (!res.ok) return
+      const data = result.data as ResultOf<typeof FeedbackActionMutation> | null
+      if (!data?.feedbackAction?.ok) return
       await refreshLeaderList()
     } finally {
       setLoadingById((prev) => ({ ...prev, [id]: false }))
@@ -130,14 +145,20 @@ export default function TeamFeedbackClient({
     if (!oldestAccepted || isLeader) return
     setLoadingOlder(true)
     try {
-      const params = new URLSearchParams({
-        teamId,
-        before: oldestAccepted,
-        limit: "50",
+      const result = await apollo.query({
+        query: FeedbackListQuery,
+        variables: {
+          input: {
+            teamId,
+            before: oldestAccepted,
+            limit: 50,
+          },
+        },
+        fetchPolicy: "no-cache",
       })
-      const res = await fetch(`/api/feedback?${params}`)
-      if (!res.ok) return
-      const older: FeedbackItem[] = await res.json()
+      const older =
+        (result.data as ResultOf<typeof FeedbackListQuery> | null)
+          ?.feedbackList ?? []
       setFeedback((prev) => [...prev, ...older])
       if (older.length > 0 && older[older.length - 1]?.acceptedAt) {
         setOldestAccepted(older[older.length - 1].acceptedAt)

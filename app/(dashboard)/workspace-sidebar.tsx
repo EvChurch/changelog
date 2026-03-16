@@ -1,9 +1,13 @@
 "use client"
 
+import { useApolloClient } from "@apollo/client/react"
 import { AnimatePresence, motion } from "framer-motion"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useEffect, useState } from "react"
+
+import type { ResultOf } from "@/lib/graphql/gql"
+import { TeamQuery } from "@/lib/graphql/operations"
 
 type TeamItem = { id: string; name: string; roles: string[] }
 type GroupedTeams = { serviceTypeName: string; teams: TeamItem[] }
@@ -26,6 +30,7 @@ export default function WorkspaceSidebar({
   groupedTeams: GroupedTeams[]
   teamsWithoutServiceType: TeamItem[]
 }) {
+  const apollo = useApolloClient()
   const pathname = usePathname()
   const teamMatch = pathname.match(/^\/teams\/([^/]+)/)
   const teamId = teamMatch?.[1]
@@ -49,8 +54,18 @@ export default function WorkspaceSidebar({
     const id = teamId ?? positionTeamId
     if (!id) return
     let cancelled = false
-    fetch(`/api/teams/${id}`)
-      .then((r) => (r.ok ? r.json() : null))
+    apollo
+      .query({
+        query: TeamQuery,
+        variables: { teamId: id },
+        fetchPolicy: "no-cache",
+      })
+      .then(
+        (result) =>
+          ((result.data as ResultOf<typeof TeamQuery> | null)?.team as
+            | TeamForSidebar
+            | undefined) ?? null
+      )
       .then((data) => {
         if (!cancelled && data) setTeam(data)
       })
@@ -58,7 +73,7 @@ export default function WorkspaceSidebar({
     return () => {
       cancelled = true
     }
-  }, [teamId, positionTeamId])
+  }, [apollo, teamId, positionTeamId])
 
   const linkClass = (active: boolean) =>
     active

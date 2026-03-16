@@ -1,6 +1,9 @@
 "use client"
 
+import { useApolloClient } from "@apollo/client/react"
+
 import MarkdownDescriptionCard from "@/components/markdown-description-card"
+import { UpdateTeamContentMutation } from "@/lib/graphql/operations"
 
 export default function TeamOverviewClient({
   teamId,
@@ -11,11 +14,12 @@ export default function TeamOverviewClient({
   canEditContent: boolean
   teamDescriptionMarkdown: string | null
 }) {
+  const apollo = useApolloClient()
+
   const onSave = async (descriptionMarkdown: string) => {
-    await fetch(`/api/teams/${teamId}/content`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ descriptionMarkdown }),
+    await apollo.mutate({
+      mutation: UpdateTeamContentMutation,
+      variables: { teamId, descriptionMarkdown },
     })
   }
 

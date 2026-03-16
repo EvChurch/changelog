@@ -1,9 +1,14 @@
 "use client"
 
+import { useApolloClient } from "@apollo/client/react"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 
+import type { ResultOf } from "@/lib/graphql/gql"
+import { FeedbackActionMutation } from "@/lib/graphql/operations"
+
 export default function LeaderActions({ feedbackId }: { feedbackId: string }) {
+  const apollo = useApolloClient()
   const router = useRouter()
   const [comment, setComment] = useState("")
   const [loading, setLoading] = useState(false)
@@ -11,15 +16,16 @@ export default function LeaderActions({ feedbackId }: { feedbackId: string }) {
   const submit = async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/feedback/${feedbackId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const result = await apollo.mutate({
+        mutation: FeedbackActionMutation,
+        variables: {
+          id: feedbackId,
           action: "leader_accept",
           comment: comment.trim() || undefined,
-        }),
+        },
       })
-      if (!res.ok) throw new Error("Request failed")
+      const data = result.data as ResultOf<typeof FeedbackActionMutation> | null
+      if (!data?.feedbackAction?.ok) throw new Error("Request failed")
       router.push("/leader")
       router.refresh()
     } finally {

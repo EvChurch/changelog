@@ -2,12 +2,27 @@ import { notFound, redirect } from "next/navigation"
 import { getServerSession } from "next-auth"
 
 import { authOptions } from "@/lib/auth"
-import { prisma } from "@/lib/db"
-import { getOrCreatePersonByPcoId } from "@/lib/person"
+import { getServerApolloClient } from "@/lib/graphql/apollo-rsc"
+import type { ResultOf } from "@/lib/graphql/gql"
+import { FeedbackListQuery } from "@/lib/graphql/operations"
 
 import TeamFeedbackClient from "../team-feedback-client"
 
 const DEFAULT_DAYS = 90
+type FeedbackRow = {
+  id: string
+  content: string
+  status: "pending_driver_review" | "pending_leader_review" | "accepted"
+  source: "driver" | "member"
+  leaderComment: string | null
+  driverComment: string | null
+  createdAt: string
+  acceptedAt: string | null
+  reviewedByDriverAt: string | null
+  team: { id: string; name: string }
+  createdBy: { fullName: string; email: string | null }
+}
+type FeedbackListData = ResultOf<typeof FeedbackListQuery>
 
 export default async function TeamFeedbackPage({
   params,
@@ -16,106 +31,67 @@ export default async function TeamFeedbackPage({
 }) {
   const session = await getServerSession(authOptions)
   if (!session) redirect("/login")
+  const apollo = await getServerApolloClient()
 
   const { teamId } = await params
-  const person = await getOrCreatePersonByPcoId(session.user.id, {
-    email: session.user.email ?? undefined,
-    fullName: session.user.name ?? undefined,
-  })
-
-  const team = await prisma.team.findUnique({
-    where: { id: teamId },
-    select: {
-      id: true,
-      name: true,
-      serviceTypeId: true,
-      leaders: { select: { personId: true } },
-      positions: {
-        select: { assignments: { select: { personId: true } } },
-      },
-    },
-  })
-
-  if (!team) notFound()
-
-  const isLeader = team.leaders.some((l) => l.personId === person.id)
-  const isMember = team.positions.some((position) =>
-    position.assignments.some((a) => a.personId === person.id)
-  )
-  const isEligibleDriver = Boolean(
-    team.serviceTypeId &&
-    (await prisma.driver.findUnique({
-      where: {
-        personId_serviceTypeId: {
-          personId: person.id,
-          serviceTypeId: team.serviceTypeId ?? "",
-        },
-      },
-    }))
-  )
-
-  if (!isLeader && !isMember && !isEligibleDriver) notFound()
 
   const sinceDate = new Date()
   sinceDate.setDate(sinceDate.getDate() - DEFAULT_DAYS)
+  let isLeader = false
+  let initialFeedback: FeedbackRow[] | null = null
 
-  const initialFeedback = isLeader
-    ? await prisma.feedback.findMany({
-        where: { teamId: team.id },
-        include: {
-          team: { select: { id: true, name: true } },
-          createdBy: { select: { fullName: true, email: true } },
+  try {
+    const leaderResult = await apollo.query({
+      query: FeedbackListQuery,
+      variables: {
+        input: {
+          role: "team_leader",
+          teamId,
+          limit: 50,
         },
-        orderBy: { createdAt: "desc" },
-        take: 50,
-      })
-    : (
-        await Promise.all([
-          prisma.feedback.findMany({
-            where: {
-              teamId: team.id,
-              status: "accepted",
-              acceptedAt: { gte: sinceDate },
-            },
-            include: {
-              team: { select: { id: true, name: true } },
-              createdBy: { select: { fullName: true, email: true } },
-            },
-            orderBy: { acceptedAt: "desc" },
-            take: 50,
-          }),
-          prisma.feedback.findMany({
-            where: {
-              teamId: team.id,
-              personId: person.id,
-              status: {
-                in: ["pending_driver_review", "pending_leader_review"],
-              },
-            },
-            include: {
-              team: { select: { id: true, name: true } },
-              createdBy: { select: { fullName: true, email: true } },
-            },
-            orderBy: { createdAt: "desc" },
-            take: 50,
-          }),
-        ])
-      ).flat()
+      },
+      fetchPolicy: "no-cache",
+    })
+    isLeader = true
+    initialFeedback = (leaderResult.data as FeedbackListData | null)
+      ?.feedbackList as FeedbackRow[] | null
+  } catch {
+    const memberResult = await apollo.query({
+      query: FeedbackListQuery,
+      variables: {
+        input: {
+          teamId,
+          since: sinceDate.toISOString(),
+          includePendingMine: true,
+          limit: 50,
+        },
+      },
+      fetchPolicy: "no-cache",
+    })
+    initialFeedback = (memberResult.data as FeedbackListData | null)
+      ?.feedbackList as FeedbackRow[] | null
+  }
+
+  if (!initialFeedback) {
+    notFound()
+  }
 
   const deduped = Array.from(
     new Map(initialFeedback.map((item) => [item.id, item])).values()
-  ).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+  ).sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  )
 
   return (
     <TeamFeedbackClient
-      teamId={team.id}
+      teamId={teamId}
       isLeader={isLeader}
       defaultDays={DEFAULT_DAYS}
       initialFeedback={deduped.map((item) => ({
         ...item,
-        createdAt: item.createdAt.toISOString(),
-        acceptedAt: item.acceptedAt?.toISOString() ?? null,
-        reviewedByDriverAt: item.reviewedByDriverAt?.toISOString() ?? null,
+        createdAt: item.createdAt,
+        acceptedAt: item.acceptedAt ?? null,
+        reviewedByDriverAt: item.reviewedByDriverAt ?? null,
       }))}
     />
   )

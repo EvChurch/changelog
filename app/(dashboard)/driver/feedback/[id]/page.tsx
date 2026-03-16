@@ -3,8 +3,8 @@ import { notFound, redirect } from "next/navigation"
 import { getServerSession } from "next-auth"
 
 import { authOptions } from "@/lib/auth"
-import { prisma } from "@/lib/db"
-import { getOrCreatePersonByPcoId } from "@/lib/person"
+import { getServerApolloClient } from "@/lib/graphql/apollo-rsc"
+import { DriverFeedbackQuery } from "@/lib/graphql/operations"
 
 import DriverActions from "./driver-actions"
 
@@ -16,28 +16,16 @@ export default async function DriverFeedbackPage({
   const session = await getServerSession(authOptions)
   if (!session) redirect("/login")
   const { id } = await params
-  const person = await getOrCreatePersonByPcoId(session.user.id, {
-    email: session.user.email,
-    fullName: session.user.name,
-  })
-  const feedback = await prisma.feedback.findUnique({
-    where: { id },
-    include: {
-      team: { select: { name: true, serviceTypeId: true } },
-      createdBy: { select: { fullName: true, email: true } },
-    },
-  })
-  if (!feedback || feedback.status !== "pending_driver_review") notFound()
-
-  const isDriver =
-    Boolean(feedback.team.serviceTypeId) &&
-    (await prisma.driver.findFirst({
-      where: {
-        personId: person.id,
-        serviceTypeId: feedback.team.serviceTypeId ?? undefined,
-      },
-    }))
-  if (!isDriver) redirect("/driver")
+  const apollo = await getServerApolloClient()
+  const feedback = await apollo
+    .query({
+      query: DriverFeedbackQuery,
+      variables: { id },
+      fetchPolicy: "no-cache",
+    })
+    .then((result) => result.data?.driverFeedback ?? null)
+    .catch(() => null)
+  if (!feedback) notFound()
 
   return (
     <>

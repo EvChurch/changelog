@@ -1,6 +1,18 @@
 "use client"
 
+import { useApolloClient } from "@apollo/client/react"
 import { useCallback, useEffect, useState } from "react"
+
+import type { ResultOf } from "@/lib/graphql/gql"
+import {
+  CreateKeyResultMutation,
+  CreateObjectiveMutation,
+  DeleteKeyResultMutation,
+  DeleteObjectiveMutation,
+  PositionObjectivesQuery,
+  UpdateKeyResultMutation,
+  UpdateObjectiveMutation,
+} from "@/lib/graphql/operations"
 
 interface PersonItem {
   id: string
@@ -35,6 +47,7 @@ export default function PositionGoalsClient({
   canEditGoals: boolean
   teamMembers: PersonItem[]
 }) {
+  const apollo = useApolloClient()
   const [objectives, setObjectives] = useState<ObjectiveItem[]>([])
   const [loadingObjectives, setLoadingObjectives] = useState(true)
   const [objectiveDrafts, setObjectiveDrafts] = useState<
@@ -105,15 +118,23 @@ export default function PositionGoalsClient({
   const loadObjectives = useCallback(async () => {
     setLoadingObjectives(true)
     try {
-      const res = await fetch(`/api/positions/${positionId}/objectives`)
-      if (!res.ok) return
-      const data: { objectives: ObjectiveItem[] } = await res.json()
+      const result = await apollo.query({
+        query: PositionObjectivesQuery,
+        variables: { positionId },
+        fetchPolicy: "no-cache",
+      })
+      const data = {
+        objectives:
+          ((result.data as ResultOf<typeof PositionObjectivesQuery> | null)
+            ?.positionObjectives?.objectives as ObjectiveItem[] | undefined) ??
+          [],
+      }
       setObjectives(data.objectives ?? [])
       hydrateDrafts(data.objectives ?? [])
     } finally {
       setLoadingObjectives(false)
     }
-  }, [positionId, hydrateDrafts])
+  }, [apollo, positionId, hydrateDrafts])
 
   useEffect(() => {
     void loadObjectives()
@@ -123,19 +144,21 @@ export default function PositionGoalsClient({
     if (!canEditGoals || !newObjectiveDraft.title.trim()) return
     setSavingNewObjective(true)
     try {
-      const res = await fetch(`/api/positions/${positionId}/objectives`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const result = await apollo.mutate({
+        mutation: CreateObjectiveMutation,
+        variables: {
+          positionId,
           title: newObjectiveDraft.title.trim(),
           descriptionMarkdown:
             newObjectiveDraft.descriptionMarkdown.trim() || null,
           status: newObjectiveDraft.status,
           assigneePersonId: newObjectiveDraft.assigneePersonId || null,
-        }),
+        },
       })
-      if (!res.ok) return
-      const created: ObjectiveItem = await res.json()
+      const created = (
+        result.data as ResultOf<typeof CreateObjectiveMutation> | null
+      )?.createObjective as ObjectiveItem | undefined
+      if (!created) return
       setObjectives((prev) => [created, ...prev])
       hydrateDrafts([created])
       setNewObjectiveDraft({
@@ -154,18 +177,20 @@ export default function PositionGoalsClient({
     if (!canEditGoals || !draft) return
     setSavingObjectiveById((prev) => ({ ...prev, [objectiveId]: true }))
     try {
-      const res = await fetch(`/api/objectives/${objectiveId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const result = await apollo.mutate({
+        mutation: UpdateObjectiveMutation,
+        variables: {
+          objectiveId,
           title: draft.title.trim(),
           descriptionMarkdown: draft.descriptionMarkdown.trim() || null,
           status: draft.status,
           assigneePersonId: draft.assigneePersonId || null,
-        }),
+        },
       })
-      if (!res.ok) return
-      const updated: ObjectiveItem = await res.json()
+      const updated = (
+        result.data as ResultOf<typeof UpdateObjectiveMutation> | null
+      )?.updateObjective as ObjectiveItem | undefined
+      if (!updated) return
       setObjectives((prev) =>
         prev.map((o) => (o.id === updated.id ? updated : o))
       )
@@ -179,10 +204,14 @@ export default function PositionGoalsClient({
     if (!canEditGoals) return
     setSavingObjectiveById((prev) => ({ ...prev, [objectiveId]: true }))
     try {
-      const res = await fetch(`/api/objectives/${objectiveId}`, {
-        method: "DELETE",
+      const result = await apollo.mutate({
+        mutation: DeleteObjectiveMutation,
+        variables: { objectiveId },
       })
-      if (!res.ok) return
+      const deleted = (
+        result.data as ResultOf<typeof DeleteObjectiveMutation> | null
+      )?.deleteObjective?.ok
+      if (!deleted) return
       setObjectives((prev) => prev.filter((o) => o.id !== objectiveId))
     } finally {
       setSavingObjectiveById((prev) => ({ ...prev, [objectiveId]: false }))
@@ -194,16 +223,19 @@ export default function PositionGoalsClient({
     if (!canEditGoals || !draft?.title?.trim()) return
     setSavingKeyResultById((prev) => ({ ...prev, [objectiveId]: true }))
     try {
-      const res = await fetch(`/api/objectives/${objectiveId}/key-results`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const result = await apollo.mutate({
+        mutation: CreateKeyResultMutation,
+        variables: {
+          objectiveId,
           title: draft.title.trim(),
           descriptionMarkdown: draft.descriptionMarkdown.trim() || null,
           progress: draft.progress,
-        }),
+        },
       })
-      if (!res.ok) return
+      const created = (
+        result.data as ResultOf<typeof CreateKeyResultMutation> | null
+      )?.createKeyResult?.id
+      if (!created) return
       await loadObjectives()
       setNewKeyResultDrafts((prev) => ({
         ...prev,
@@ -219,17 +251,20 @@ export default function PositionGoalsClient({
     if (!canEditGoals || !draft) return
     setSavingKeyResultById((prev) => ({ ...prev, [keyResultId]: true }))
     try {
-      const res = await fetch(`/api/objectives/${objectiveId}/key-results`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const result = await apollo.mutate({
+        mutation: UpdateKeyResultMutation,
+        variables: {
+          objectiveId,
           keyResultId,
           title: draft.title.trim(),
           descriptionMarkdown: draft.descriptionMarkdown.trim() || null,
           progress: draft.progress,
-        }),
+        },
       })
-      if (!res.ok) return
+      const updated = (
+        result.data as ResultOf<typeof UpdateKeyResultMutation> | null
+      )?.updateKeyResult?.id
+      if (!updated) return
       await loadObjectives()
     } finally {
       setSavingKeyResultById((prev) => ({ ...prev, [keyResultId]: false }))
@@ -240,12 +275,14 @@ export default function PositionGoalsClient({
     if (!canEditGoals) return
     setSavingKeyResultById((prev) => ({ ...prev, [keyResultId]: true }))
     try {
-      const res = await fetch(`/api/objectives/${objectiveId}/key-results`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ keyResultId }),
+      const result = await apollo.mutate({
+        mutation: DeleteKeyResultMutation,
+        variables: { objectiveId, keyResultId },
       })
-      if (!res.ok) return
+      const deleted = (
+        result.data as ResultOf<typeof DeleteKeyResultMutation> | null
+      )?.deleteKeyResult?.ok
+      if (!deleted) return
       await loadObjectives()
     } finally {
       setSavingKeyResultById((prev) => ({ ...prev, [keyResultId]: false }))

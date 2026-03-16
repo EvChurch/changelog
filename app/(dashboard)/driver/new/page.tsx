@@ -3,22 +3,20 @@ import { redirect } from "next/navigation"
 import { getServerSession } from "next-auth"
 
 import { authOptions } from "@/lib/auth"
-import { prisma } from "@/lib/db"
-import { getOrCreatePersonByPcoId } from "@/lib/person"
+import { getServerApolloClient } from "@/lib/graphql/apollo-rsc"
+import { ViewerRoleSummaryQuery } from "@/lib/graphql/operations"
 
 import DriverFeedbackForm from "./driver-feedback-form"
 
 export default async function DriverNewPage() {
   const session = await getServerSession(authOptions)
   if (!session) redirect("/login")
-  const person = await getOrCreatePersonByPcoId(session.user.id, {
-    email: session.user.email,
-    fullName: session.user.name,
+  const apollo = await getServerApolloClient()
+  const roleResult = await apollo.query({
+    query: ViewerRoleSummaryQuery,
+    fetchPolicy: "no-cache",
   })
-  const isDriver = await prisma.driver.findFirst({
-    where: { personId: person.id },
-  })
-  if (!isDriver) redirect("/driver")
+  if (!roleResult.data?.viewerRoleSummary?.isDriver) redirect("/driver")
 
   return (
     <>

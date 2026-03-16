@@ -1,6 +1,10 @@
 "use client"
 
+import { useApolloClient } from "@apollo/client/react"
 import { useMemo, useState } from "react"
+
+import type { ResultOf } from "@/lib/graphql/gql"
+import { TeamMemberQuery } from "@/lib/graphql/operations"
 
 interface PersonItem {
   id: string
@@ -52,6 +56,7 @@ export default function MemberList({
   members: PersonItem[]
   emptyMessage?: string
 }) {
+  const apollo = useApolloClient()
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [detail, setDetail] = useState<MemberDetail | null>(null)
@@ -65,10 +70,15 @@ export default function MemberList({
     setLoadingId(memberId)
     setSelectedId(memberId)
     try {
-      const res = await fetch(`/api/teams/${teamId}/members/${memberId}`)
-      if (!res.ok) return
-      const data: MemberDetail = await res.json()
-      setDetail(data)
+      const result = await apollo.query({
+        query: TeamMemberQuery,
+        variables: { teamId, personId: memberId },
+        fetchPolicy: "no-cache",
+      })
+      const data = (result.data as ResultOf<typeof TeamMemberQuery> | null)
+        ?.teamMember
+      if (!data) return
+      setDetail(data as MemberDetail)
     } finally {
       setLoadingId(null)
     }
