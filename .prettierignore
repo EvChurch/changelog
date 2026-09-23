@@ -3,3 +3,4 @@ out
 build
 node_modules
 *.lock
+lib/graphql/generated/schema.graphql
