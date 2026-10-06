@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main, stage]
 
+permissions:
+  contents: read
+
 jobs:
   lint:
     runs-on: ubuntu-latest
@@ -18,3 +21,26 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: npm run lint
       - run: npm run format:check
+
+  offline-validation:
+    runs-on: ubuntu-latest
+    env:
+      # Non-production schema fixtures. No database or PCO service is contacted.
+      DATABASE_URL: postgresql://fixture:fixture@127.0.0.1:1/ci
+      NEXTAUTH_SECRET: ci-schema-fixture
+      NEXTAUTH_URL: http://localhost:3000
+      PCO_CLIENT_ID: ci-schema-fixture
+      PCO_CLIENT_SECRET: ci-schema-fixture
+      PCO_API_ID: ci-schema-fixture
+      PCO_API_SECRET: ci-schema-fixture
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+      - run: npm ci --ignore-scripts
+      - run: npx prisma generate
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
