@@ -10,9 +10,7 @@ import {
 } from "@/lib/graphql/operations"
 
 type FeedbackStatus =
-  | "pending_driver_review"
-  | "pending_leader_review"
-  | "accepted"
+  "pending_driver_review" | "pending_leader_review" | "accepted"
 
 interface FeedbackItem {
   id: string

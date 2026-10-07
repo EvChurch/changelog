@@ -63,8 +63,7 @@ export default function WorkspaceSidebar({
       .then(
         (result) =>
           ((result.data as ResultOf<typeof TeamQuery> | null)?.team as
-            | TeamForSidebar
-            | undefined) ?? null
+            TeamForSidebar | undefined) ?? null
       )
       .then((data) => {
         if (!cancelled && data) setTeam(data)
