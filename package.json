@@ -23,8 +23,8 @@
     "@apollo/client-integration-nextjs": "^0.14.4",
     "@floating-ui/react": "^0.27.19",
     "@pothos/core": "^4.12.0",
-    "@prisma/adapter-pg": "^7.5.0",
-    "@prisma/client": "^7.5.0",
+    "@prisma/adapter-pg": "7.10.0",
+    "@prisma/client": "7.10.0",
     "@radix-ui/react-dropdown-menu": "^2.1.16",
     "@radix-ui/react-popover": "^1.1.15",
     "@t3-oss/env-nextjs": "^0.13.10",
@@ -54,7 +54,7 @@
     "next-auth": "^4.24.13",
     "pg": "^8.20.0",
     "pg-boss": "^10.4.2",
-    "prisma": "^7.5.0",
+    "prisma": "7.10.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-hotkeys-hook": "^5.2.4",
@@ -90,5 +90,8 @@
     "*.{js,mjs,cjs,ts,tsx}": [
       "eslint --fix"
     ]
+  },
+  "engines": {
+    "node": "^22.12.0 || >=24.0.0"
   }
 }
