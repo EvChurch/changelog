@@ -1,7 +1,7 @@
 "use client"
 
 import { useApolloClient } from "@apollo/client/react"
-import { AnimatePresence, motion } from "framer-motion"
+import { AnimatePresence, motion } from "motion/react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useEffect, useState } from "react"
@@ -63,8 +63,7 @@ export default function WorkspaceSidebar({
       .then(
         (result) =>
           ((result.data as ResultOf<typeof TeamQuery> | null)?.team as
-            | TeamForSidebar
-            | undefined) ?? null
+            TeamForSidebar | undefined) ?? null
       )
       .then((data) => {
         if (!cancelled && data) setTeam(data)
